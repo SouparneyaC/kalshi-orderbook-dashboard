@@ -1,0 +1,7 @@
+certifi>=2024.0.0
+cryptography>=42.0.0
+duckdb==1.5.6  # pinned: 2.0 changed how one connection handles concurrent use
+fastapi>=0.110.0
+orjson>=3.10  # fast JSON parse/encode on the hot path
+uvicorn>=0.29.0
+websockets>=13.0

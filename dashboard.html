@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalshi Live Terminal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #12141a;
+    --surface: #1a1d26;
+    --surface-raised: #1f2230;
+    --border: #252936;
+    --border-subtle: #1e2130;
+    --text: #c9cdd6;
+    --text-bright: #e8eaf0;
+    --muted: #6b7280;
+    --dimmed: #454b5a;
+    --green: #22c55e;
+    --green-dim: rgba(34,197,94,0.12);
+    --red: #ef4444;
+    --red-dim: rgba(239,68,68,0.12);
+    --amber: #f59e0b;
+    --amber-dim: rgba(245,158,11,0.10);
+    --blue: #3b82f6;
+    --blue-dim: rgba(59,130,246,0.10);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ---- Header bar ---- */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: 40px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 16px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .header-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-bright);
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+  }
+
+  .header-sep {
+    width: 1px;
+    height: 18px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .header-stat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .header-stat .val {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .feed-pill {
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .feed-live   { background: var(--green-dim); color: var(--green); }
+  .feed-lagging { background: var(--amber-dim); color: var(--amber); }
+  .feed-dead   { background: var(--red-dim); color: var(--red); }
+
+  .conn-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .conn-dot.on  { background: var(--green); box-shadow: 0 0 4px var(--green); }
+  .conn-dot.off { background: var(--red); }
+
+  /* ---- Main layout ---- */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    height: calc(100vh - 40px);
+    overflow: hidden;
+  }
+
+  /* ---- Market table (left) ---- */
+  .table-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--border);
+  }
+
+  .table-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--surface);
+  }
+
+  .table-toolbar .label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-bright);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .table-toolbar .count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .books-toggle {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text);
+    cursor: pointer;
+    user-select: none;
+  }
+  .books-toggle input { margin: 0; cursor: pointer; }
+  .books-toggle #books-count { color: var(--amber); font-variant-numeric: tabular-nums; }
+  .search-box {
+    margin-left: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 10px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    width: 200px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-box:focus { border-color: var(--blue); }
+  .search-box::placeholder { color: var(--dimmed); }
+
+  .table-wrap {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-variant-numeric: tabular-nums;
+  }
+
+  thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--surface);
+  }
+
+  th {
+    padding: 6px 10px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    position: relative;
+  }
+  th:hover { color: var(--text); }
+  th.num { text-align: right; }
+  th.sorted::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--blue);
+  }
+
+  /* Column widths */
+  .col-ticker  { width: 130px; }
+  .col-title   { width: auto; min-width: 160px; }
+  .col-price   { width: 70px; }
+  .col-bid     { width: 60px; }
+  .col-ask     { width: 60px; }
+  .col-spread  { width: 65px; }
+  .col-vol     { width: 70px; }
+  .col-oi      { width: 65px; }
+  .col-dvol    { width: 80px; }
+  .col-age     { width: 50px; }
+
+  td {
+    padding: 0 10px;
+    height: 25px;            /* fixed: the windowed table (ROW_H in the script) depends on it */
+    font-size: 11px;
+    border-bottom: 1px solid var(--border-subtle);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  tr.spacer td, tr.spacer:hover td { padding: 0; border: 0; background: none; }
+
+  .cell-ticker {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 500;
+    color: var(--blue);
+    font-size: 10px;
+  }
+  .cell-title {
+    color: var(--text);
+    max-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cell-num {
+    text-align: right;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+  }
+  .cell-price { color: var(--text-bright); font-weight: 500; }
+  .cell-bid   { color: var(--green); }
+  .cell-ask   { color: var(--red); }
+  .cell-dvol  { color: var(--amber); }
+  .cell-muted { color: var(--muted); }
+
+  .spread-tight { color: var(--green); }
+  .spread-mid   { color: var(--amber); }
+  .spread-wide  { color: var(--red); }
+
+  .age-fresh { color: var(--green); }
+  .age-quiet { color: var(--muted); }
+  .age-dead  { color: var(--red); }
+
+  .book-dot {
+    display: inline-block;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--amber);
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  /* ---- Right panel ---- */
+  .panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .panel-section {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .panel-header .title {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+  }
+
+  .panel-header .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--dimmed);
+  }
+
+  /* ---- Trade tape ---- */
+  .trade-tape {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .trade-row {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    gap: 6px;
+    padding: 4px 14px;
+    align-items: center;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 11px;
+  }
+  .trade-row:hover { background: rgba(255,255,255,0.02); }
+
+  .trade-side {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    text-align: center;
+    padding: 1px 0;
+    border-radius: 2px;
+    letter-spacing: 0.03em;
+  }
+  .trade-yes { background: var(--green-dim); color: var(--green); }
+  .trade-no  { background: var(--red-dim); color: var(--red); }
+
+  .trade-ticker {
+    font-size: 11px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .trade-meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* ---- Heavy hitters ---- */
+  .hitters-list {
+    padding: 6px 14px;
+    overflow-y: auto;
+  }
+
+  .hitter-row {
+    display: grid;
+    grid-template-columns: 150px 1fr 40px;
+    gap: 8px;
+    align-items: center;
+    padding: 3px 0;
+  }
+
+  .hitter-name {
+    font-size: 11px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .hitter-bar-bg {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .hitter-bar-fill {
+    height: 100%;
+    background: var(--blue);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  .hitter-score {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  /* ---- System health (concentration + latency) ---- */
+  .system-section {
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+  }
+
+  .sys-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 0;
+  }
+  .sys-label { color: var(--muted); }
+  .sys-val   { color: var(--text); }
+
+  .conc-bar-bg {
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 4px 0 6px;
+    overflow: hidden;
+  }
+  .conc-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s, background 0.3s;
+  }
+
+  .lat-grid {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 1px 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .lat-hdr {
+    color: var(--dimmed);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding-bottom: 3px;
+  }
+  .lat-hdr.num { text-align: right; }
+
+  .lat-stage { color: var(--muted); padding: 1px 0; }
+  .lat-val   { color: var(--text); text-align: right; padding: 1px 0; }
+  .lat-warn  { color: var(--amber); }
+  .lat-bad   { color: var(--red); }
+
+  .sys-footer {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border-subtle);
+    color: var(--dimmed);
+    font-size: 9px;
+  }
+
+  /* ---- No data screen ---- */
+  .no-data {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(100vh - 40px);
+    color: var(--dimmed);
+    font-size: 13px;
+  }
+
+  .no-data .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 10px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- Scrollbar ---- */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--dimmed); }
+
+  /* ---- Responsive ---- */
+  @media (max-width: 900px) {
+    .main {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr 300px;
+    }
+    .table-panel { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+
+  /* --- Clickable rows: a market with an order book opens its own page in a new tab --- */
+  #table-body tr.has-book { cursor: pointer; }
+  #table-body tr.has-book:hover td { background: var(--amber-dim); }
+  .cell-title a { color: inherit; text-decoration: none; }
+  .cell-title a:hover { color: var(--text-bright); text-decoration: underline; }
+  .name-link { color: inherit; text-decoration: none; }
+  .name-link:hover { color: var(--text-bright); text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <span class="header-title">Kalshi Terminal</span>
+  <div class="header-sep"></div>
+  <div class="conn-dot off" id="conn-dot"></div>
+  <div class="header-stat"><span class="val" id="hdr-markets">0</span> mkts</div>
+  <div class="header-stat"><span class="val" id="hdr-trades">0</span> trades</div>
+  <div class="header-stat"><span class="val" id="hdr-books">0</span> books</div>
+  <div class="header-stat"><span class="val" id="hdr-distinct">0</span> distinct</div>
+  <div class="header-stat"><span class="val" id="hdr-uptime">0m</span></div>
+  <div class="feed-pill feed-dead" id="feed-pill">Kalshi &middot; Connecting</div>
+</div>
+
+<!-- No data -->
+<div class="no-data" id="no-data">
+  <div class="spinner"></div>
+  Connecting to Kalshi feed&hellip;
+</div>
+
+<!-- Main layout -->
+<div class="main" id="main-layout" style="display:none">
+
+  <!-- Market table -->
+  <div class="table-panel">
+    <div class="table-toolbar">
+      <span class="label">Markets</span>
+      <span class="count" id="table-count">0 / 0</span>
+      <label class="books-toggle" title="Show only markets with a live order book"><input type="checkbox" id="books-only"> <span class="book-dot"></span>Books only <span id="books-count">0</span></label>
+      <input type="text" class="search-box" id="search-input" placeholder="Filter ticker or title">
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-ticker" data-key="ticker">Ticker</th>
+            <th class="col-title" data-key="title">Title</th>
+            <th class="col-price num" data-key="price">Price</th>
+            <th class="col-bid num" data-key="yes_bid">Bid</th>
+            <th class="col-ask num" data-key="yes_ask">Ask</th>
+            <th class="col-spread num" data-key="spread">Spread</th>
+            <th class="col-vol num" data-key="volume">Vol</th>
+            <th class="col-oi num" data-key="open_interest">OI</th>
+            <th class="col-dvol num" data-key="dollar_volume">$Vol</th>
+            <th class="col-age num" data-key="recv_ts">Age</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="panel">
+    <!-- Trade tape -->
+    <div class="panel-section" style="flex:1 1 0; min-height:0">
+      <div class="panel-header">
+        <span class="title">Trade Tape</span>
+        <span class="badge" id="tape-count">0</span>
+      </div>
+      <div class="trade-tape" id="trade-feed"></div>
+    </div>
+
+    <!-- Heavy hitters -->
+    <div class="panel-section" style="flex:0 0 auto; max-height:200px">
+      <div class="panel-header">
+        <span class="title">Heavy Hitters</span>
+        <span class="badge">Misra-Gries</span>
+      </div>
+      <div class="hitters-list" id="hitters-list"></div>
+    </div>
+
+    <!-- System health -->
+    <div class="panel-section" style="flex:0 0 auto">
+      <div class="panel-header">
+        <span class="title">System</span>
+      </div>
+      <div class="system-section" id="system-section">
+        <div class="sys-row">
+          <span class="sys-label">Concentration</span>
+          <span class="sys-val" id="sys-conc">--</span>
+        </div>
+        <div class="conc-bar-bg"><div class="conc-bar-fill" id="conc-bar" style="width:0"></div></div>
+        <div id="latency-grid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  const esc = escapeHtml;
+  let ws;
+  let currentData = null;
+  let sortKey = 'dollar_volume';
+  let sortDesc = true;
+  let searchFilter = '';
+  let booksOnly = false;
+  const SORT_INTERVAL_MS = 1000;
+  let order = [];            // tickers in display order, refreshed by render()
+  let lastSortAt = 0;
+  let needResort = true;
+  let lastSysAt = 0;
+
+  // Row map: ticker -> <tr> element for in-place updates
+  const rowMap = new Map();
+  let pendingRender = false;
+  // Markets we hold, keyed by ticker. Capped so a missed removal can never grow the table without bound.
+  const marketMap = new Map();
+  // The server sends the top 200 by $ volume plus every market with an order book. Only the
+  // unbooked ones are capped here; a booked market is never dropped while it has a book.
+  const MAX_MARKETS = 200;
+
+  function dvol(m) { return parseFloat(m.dollar_volume) || 0; }
+
+  function capMarkets() {
+    const unbooked = [...marketMap.values()].filter(m => !m.has_book);
+    if (unbooked.length <= MAX_MARKETS) return;
+    unbooked.sort((a, b) => dvol(a) - dvol(b));
+    const excess = unbooked.length - MAX_MARKETS;
+    for (let i = 0; i < excess; i++) marketMap.delete(unbooked[i].ticker);
+  }
+
+  // Watchdog: a socket can die silently (laptop sleep, network change) and never fire onclose.
+  // The server sends ~8 messages/s, so 10 s of silence means the connection is dead: reconnect.
+  const SILENCE_RECONNECT_MS = 10000;
+  let lastMessageAt = Date.now();
+  setInterval(() => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (Date.now() - lastMessageAt < SILENCE_RECONNECT_MS) return;
+    const dead = ws;
+    dead.onclose = dead.onerror = dead.onmessage = null;
+    try { dead.close(); } catch (e) {}
+    document.getElementById('conn-dot').className = 'conn-dot off';
+    connect();
+  }, 2000);
+
+  function connect() {
+    lastMessageAt = Date.now();
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${protocol}//${location.host}/ws`);
+    ws.onopen = () => {
+      document.getElementById('conn-dot').className = 'conn-dot on';
+    };
+    ws.onmessage = (event) => {
+      lastMessageAt = Date.now();
+      const data = JSON.parse(event.data);
+      if (data.type === 'full_state') {
+        currentData = data;
+        marketMap.clear();
+        for (const m of data.markets) marketMap.set(m.ticker, m);
+        currentData.markets = [...marketMap.values()];
+        scheduleRender();
+        reportRenderLatency(data.server_ts);
+      } else if (data.type === 'delta') {
+        if (!currentData) return;
+        for (const m of data.markets_changed) marketMap.set(m.ticker, m);
+        for (const t of data.markets_removed) marketMap.delete(t);
+        capMarkets();
+        currentData.markets = [...marketMap.values()];
+        currentData.market_count = data.market_count;
+        currentData.markets_sent = data.markets_sent;
+        currentData.recent_trades = data.recent_trades;
+        currentData.heavy_hitters = data.heavy_hitters;
+        currentData.concentration = data.concentration;
+        currentData.distinct_active = data.distinct_active;
+        currentData.stats = data.stats;
+        currentData.feed = data.feed;
+        currentData.latency = data.latency;
+        currentData.server_ts = data.server_ts;
+        scheduleRender();
+        reportRenderLatency(data.server_ts);
+      }
+    };
+    ws.onclose = () => {
+      document.getElementById('conn-dot').className = 'conn-dot off';
+      setTimeout(connect, 2000);
+    };
+    ws.onerror = () => ws.close();
+  }
+
+  // Coalesce rapid updates into a single paint
+  function scheduleRender() {
+    if (pendingRender) return;
+    pendingRender = true;
+    requestAnimationFrame(() => {
+      pendingRender = false;
+      if (currentData) render(currentData);
+    });
+  }
+
+  // --- Latency reporting ---
+  const FEED_LAGGING_MS = 3000;
+  const FEED_DEAD_MS = 10000;
+  const MARKET_FRESH_MS = 2000;
+
+  // Chrome pauses requestAnimationFrame in hidden/background tabs, so time spent hidden would be
+  // reported as render lag (seen as 45-100 s p99). Skip any message that overlaps a hidden period.
+  let lastVisibilityChange = 0;
+  document.addEventListener('visibilitychange', () => { lastVisibilityChange = Date.now(); });
+
+  function reportRenderLatency(serverTs) {
+    if (!serverTs || document.hidden) return;
+    const receivedAt = Date.now();
+    requestAnimationFrame(() => setTimeout(() => {
+      if (document.hidden || lastVisibilityChange >= receivedAt) return;
+      const ms = Date.now() - serverTs;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'render_ack', send_to_render_ms: ms }));
+      }
+    }, 0));
+  }
+
+  function feedState() {
+    const f = currentData && currentData.feed;
+    if (!f || !ws || ws.readyState !== WebSocket.OPEN || !f.connected || !f.last_msg_ms) {
+      return { cls: 'dead', age: null };
+    }
+    const age = Date.now() - f.last_msg_ms;
+    if (age >= FEED_DEAD_MS) return { cls: 'dead', age };
+    if (age >= FEED_LAGGING_MS) return { cls: 'lagging', age };
+    return { cls: 'live', age };
+  }
+
+  function fmtAge(ms) {
+    if (ms == null || ms < 0) return '--';
+    if (ms < 1000) return (ms / 1000).toFixed(1) + 's';
+    const s = Math.floor(ms / 1000);
+    if (s < 60) return s + 's';
+    if (s < 3600) return Math.floor(s / 60) + 'm';
+    return Math.floor(s / 3600) + 'h';
+  }
+
+  function stageP99(name) {
+    const st = currentData && currentData.latency && currentData.latency.stages[name];
+    return st ? st.p99 : null;
+  }
+
+  function updateFreshness() {
+    const fs = feedState();
+    const pill = document.getElementById('feed-pill');
+    const label = { live: 'Live', lagging: 'Lagging', dead: 'Dead' }[fs.cls];
+    const srv = stageP99('recv_to_send'), rnd = stageP99('send_to_render');
+    const pipe = (srv != null && rnd != null) ? ' · p99 ' + Math.round(srv + rnd) + 'ms' : '';
+    pill.textContent = 'Kalshi · ' + label + (fs.age != null ? ' · ' + fmtAge(fs.age) : '') + pipe;
+    pill.className = 'feed-pill feed-' + fs.cls;
+
+    const now = Date.now();
+    for (const tr of tbodyEl.children) {
+      if (!tr.dataset.ticker) continue;       // spacer rows
+      const ageCell = tr.lastElementChild;
+      const recv = parseInt(ageCell.dataset.recv, 10);
+      let text = '--', cls = 'cell-num';
+      if (recv) {
+        const age = now - recv;
+        text = fmtAge(age);
+        cls += ' ' + (fs.cls === 'dead' ? 'age-dead' : age < MARKET_FRESH_MS ? 'age-fresh' : 'age-quiet');
+      }
+      if (ageCell.textContent !== text) ageCell.textContent = text;
+      if (ageCell.className !== cls) ageCell.className = cls;
+    }
+  }
+
+  setInterval(updateFreshness, 1000);
+
+
+  // --- Opening a market ---
+  // A market with an order book has its own page (/market/TICKER). Clicking its row, or the title
+  // link, opens that page in a new tab; markets without a book are not clickable.
+  function marketUrl(ticker) { return '/market/' + encodeURIComponent(ticker); }
+
+  document.getElementById('table-body').addEventListener('click', (e) => {
+    const tr = e.target.closest('tr');
+    if (!tr || !tr.classList.contains('has-book') || e.target.closest('a')) return;
+    window.open(marketUrl(tr.dataset.ticker), '_blank', 'noopener');
+  });
+
+  // --- Parlay labels ---
+  // Kalshi parlay titles are the legs glued together ("yes Seattle,no Toronto wins by over 2.5
+  // points,..."), 100+ characters of noise. Show 'Parlay · 3 legs · Seattle, no Toronto wins by... +1'.
+  // (Same functions as market.html.)
+  function parlayLegs(ticker, title) {
+    const isParlay = /^KXMVE/.test(ticker || '') || /^(yes|no) /i.test(title || '');
+    if (!isParlay) return null;
+    if (!title || title === ticker) return [];
+    return title.split(/,(?=(?:yes|no) )/i).map(s => s.trim());
+  }
+  function shortLeg(leg) {
+    const m = /^(yes|no) (.*)$/i.exec(leg);
+    let name = m ? m[2] : leg;
+    if (name.length > 26) name = name.slice(0, 25) + '\u2026';
+    return m && m[1].toLowerCase() === 'no' ? 'no ' + name : name;
+  }
+  function displayTitle(ticker, title) {
+    const legs = parlayLegs(ticker, title);
+    if (legs == null) return title || ticker;
+    if (legs.length === 0) return 'Parlay \u00b7 ' + ticker.slice(-8);
+    const n = legs.length;
+    const names = legs.slice(0, 2).map(shortLeg).join(', ');
+    return 'Parlay \u00b7 ' + n + (n === 1 ? ' leg' : ' legs') + ' \u00b7 ' + names + (n > 2 ? ' +' + (n - 2) : '');
+  }
+  // Name for a ticker seen in the tape or heavy hitters: the market's title if we hold the market.
+  function nameOf(ticker, fallbackTitle) {
+    const m = marketMap.get(ticker);
+    return displayTitle(ticker, (m && m.title) || fallbackTitle || ticker);
+  }
+  function nameHtml(ticker, fallbackTitle) {
+    const m = marketMap.get(ticker);
+    const label = esc(nameOf(ticker, fallbackTitle));
+    return m && m.has_book
+      ? '<a class="name-link" href="' + esc(marketUrl(ticker)) + '" target="_blank" rel="noopener">' + label + '</a>'
+      : label;
+  }
+
+  // Write innerHTML only when it changed: most frames leave the tape, hitters and latency grid
+  // as they were, and rewriting identical HTML still costs a full rebuild of the nodes.
+  function setHtml(el, html) {
+    if (el._html === html) return;
+    el._html = html;
+    el.innerHTML = html;
+  }
+
+  // --- Formatting ---
+  function fmt(v) {
+    if (v == null) return '--';
+    const n = parseFloat(v);
+    if (isNaN(n)) return '--';
+    if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+    return n.toFixed(0);
+  }
+
+  function fmtDol(v) {
+    if (v == null) return '--';
+    const n = parseFloat(v);
+    if (isNaN(n)) return '--';
+    if (n >= 1e6) return '$' + (n/1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return '$' + (n/1e3).toFixed(1) + 'K';
+    return '$' + n.toFixed(0);
+  }
+
+  function spreadVal(bid, ask) {
+    if (!bid || !ask) return { text: '--', cls: '' };
+    const s = parseFloat(ask) - parseFloat(bid);
+    if (s <= 0) return { text: '--', cls: '' };
+    const label = '$' + s.toFixed(2);
+    if (s <= 0.02) return { text: label, cls: 'spread-tight' };
+    if (s <= 0.05) return { text: label, cls: 'spread-mid' };
+    return { text: label, cls: 'spread-wide' };
+  }
+
+  function getSpreadValue(m) {
+    if (!m.yes_bid || !m.yes_ask) return 999;
+    return parseFloat(m.yes_ask) - parseFloat(m.yes_bid);
+  }
+
+  function sortData(markets) {
+    return [...markets].sort((a, b) => {
+      let va, vb;
+      if (sortKey === 'spread') {
+        va = getSpreadValue(a); vb = getSpreadValue(b);
+      } else {
+        va = a[sortKey]; vb = b[sortKey];
+      }
+      if (va == null) va = sortDesc ? -Infinity : Infinity;
+      if (vb == null) vb = sortDesc ? -Infinity : Infinity;
+      const na = parseFloat(va), nb = parseFloat(vb);
+      if (!isNaN(na) && !isNaN(nb)) return sortDesc ? nb - na : na - nb;
+      return sortDesc ? String(vb).localeCompare(String(va)) : String(va).localeCompare(String(vb));
+    });
+  }
+
+  // --- In-place table update ---
+  // Each row remembers what it last showed (tr._c) and a cell is written only when its text
+  // changed. Before, every update rewrote all 10 cells of every row (~2,500 DOM writes per frame).
+  function setCell(tr, i, text) {
+    if (tr._c[i] !== text) { tr._c[i] = text; tr.children[i].textContent = text; }
+  }
+
+  function updateRow(tr, m) {
+    const cells = tr.children;
+    const has = !!m.has_book;
+    // 0: ticker (with a dot when we hold the book)
+    const tKey = (has ? '1' : '0') + m.ticker;
+    if (tr._c[0] !== tKey) {
+      tr._c[0] = tKey;
+      cells[0].innerHTML = (has ? '<span class="book-dot"></span>' : '') + esc(m.ticker || '--');
+    }
+    tr.classList.toggle('has-book', has);
+    // 1: title (a link to the market page when there is a book; parlays collapsed)
+    const label = displayTitle(m.ticker, m.title);
+    const lKey = (has ? '1' : '0') + label;
+    if (tr._c[1] !== lKey) {
+      tr._c[1] = lKey;
+      cells[1].innerHTML = has
+        ? '<a href="' + esc(marketUrl(m.ticker)) + '" target="_blank" rel="noopener">' + esc(label) + '</a>'
+        : esc(label);
+      cells[1].title = m.title || '';
+    }
+    setCell(tr, 2, m.price ? '$' + m.price : '--');
+    setCell(tr, 3, m.yes_bid ? '$' + m.yes_bid : '--');
+    setCell(tr, 4, m.yes_ask ? '$' + m.yes_ask : '--');
+    const sp = spreadVal(m.yes_bid, m.yes_ask);
+    setCell(tr, 5, sp.text);
+    if (tr._spCls !== sp.cls) { tr._spCls = sp.cls; cells[5].className = 'cell-num ' + sp.cls; }
+    setCell(tr, 6, fmt(m.volume));
+    setCell(tr, 7, fmt(m.open_interest));
+    setCell(tr, 8, fmtDol(m.dollar_volume));
+    cells[9].dataset.recv = m.recv_ts || '';   // the age cell is written once a second by updateFreshness
+  }
+
+  function createRow(m) {
+    const tr = document.createElement('tr');
+    tr._c = [];
+    tr.dataset.ticker = m.ticker;
+    tr.innerHTML =
+      '<td class="cell-ticker"></td><td class="cell-title"></td>' +
+      '<td class="cell-num cell-price"></td><td class="cell-num cell-bid"></td><td class="cell-num cell-ask"></td>' +
+      '<td class="cell-num"></td><td class="cell-num"></td><td class="cell-num cell-muted"></td>' +
+      '<td class="cell-num cell-dvol"></td><td class="cell-num">--</td>';
+    updateRow(tr, m);
+    return tr;
+  }
+
+  // --- Windowed table ---
+  // Only the rows on screen (plus a buffer) exist in the DOM; two spacer rows stand in for the rest,
+  // so a 250-row table costs the browser ~50 rows of layout and paint instead of 250. Rows have a
+  // fixed height (ROW_H, set in CSS) so the window can be computed from the scroll position alone.
+  const ROW_H = 25;
+  const ROW_BUFFER = 12;
+  let byTickerNow = new Map();
+  const tableWrap = document.querySelector('.table-wrap');
+  const tbodyEl = document.getElementById('table-body');
+  const topSpacer = document.createElement('tr');
+  const botSpacer = document.createElement('tr');
+  for (const sp of [topSpacer, botSpacer]) { sp.className = 'spacer'; sp.innerHTML = '<td colspan="10"></td>'; }
+
+  function renderTable() {
+    const n = order.length;
+    const first = Math.max(0, Math.floor(tableWrap.scrollTop / ROW_H) - ROW_BUFFER);
+    const last = Math.min(n, Math.ceil((tableWrap.scrollTop + (tableWrap.clientHeight || 600)) / ROW_H) + ROW_BUFFER);
+    const rows = [];
+    for (let i = first; i < last; i++) {
+      const ticker = order[i];
+      const m = byTickerNow.get(ticker);
+      let tr = rowMap.get(ticker);
+      if (tr) updateRow(tr, m);
+      else { tr = createRow(m); rowMap.set(ticker, tr); }
+      rows.push(tr);
+    }
+    topSpacer.firstChild.style.height = first * ROW_H + 'px';
+    botSpacer.firstChild.style.height = (n - last) * ROW_H + 'px';
+    // Touch the DOM only if the set or order of attached rows changed.
+    const want = [topSpacer, ...rows, botSpacer];
+    const cur = tbodyEl.children;
+    let same = cur.length === want.length;
+    for (let i = 0; same && i < want.length; i++) same = cur[i] === want[i];
+    if (!same) tbodyEl.replaceChildren(...want);
+  }
+
+  let scrollPending = false;
+  tableWrap.addEventListener('scroll', () => {
+    if (scrollPending) return;
+    scrollPending = true;
+    requestAnimationFrame(() => { scrollPending = false; renderTable(); });
+  }, { passive: true });
+
+  // --- Main render ---
+  function render(data) {
+    document.getElementById('no-data').style.display = 'none';
+    document.getElementById('main-layout').style.display = '';
+
+    const s = data.stats || {};
+
+    // Header stats
+    document.getElementById('hdr-markets').textContent = (data.market_count || 0);
+    document.getElementById('hdr-trades').textContent = fmt(s.trade_count);
+    document.getElementById('hdr-books').textContent = s.books_active || 0;
+    document.getElementById('hdr-distinct').textContent = data.distinct_active || 0;
+    const upMin = Math.floor((s.uptime_s || 0) / 60);
+    document.getElementById('hdr-uptime').textContent = upMin + 'm';
+
+    // Filter markets
+    let markets = data.markets || [];
+    let bookedCount = 0;
+    for (const m of markets) if (m.has_book) bookedCount++;
+    document.getElementById('books-count').textContent = bookedCount;
+    if (booksOnly) markets = markets.filter(m => m.has_book);
+    if (searchFilter) {
+      const q = searchFilter.toLowerCase();
+      markets = markets.filter(m =>
+        (m.ticker && m.ticker.toLowerCase().includes(q)) ||
+        (m.title && m.title.toLowerCase().includes(q))
+      );
+    }
+
+    // Order: re-sort at most once per SORT_INTERVAL_MS (or at once when the user changes the sort,
+    // filter or search). Values still update every frame; only the ROW ORDER is held for up to a
+    // second. Re-sorting ~250 rows and shuffling the DOM on every message was the main source of lag.
+    const nowT = performance.now();
+    const resort = needResort || nowT - lastSortAt >= SORT_INTERVAL_MS;
+    const byTicker = new Map();
+    for (const m of markets) byTicker.set(m.ticker, m);
+    if (resort) {
+      order = sortData(markets).map(m => m.ticker);
+      lastSortAt = nowT;
+      needResort = false;
+    } else {
+      order = order.filter(t => byTicker.has(t));          // drop markets that left
+      const have = new Set(order);
+      for (const m of markets) if (!have.has(m.ticker)) order.push(m.ticker);   // new ones go last until the next sort
+    }
+
+    const shown = order.length;
+    const total = data.market_count || 0;
+    document.getElementById('table-count').textContent = shown + ' / ' + total;
+
+    byTickerNow = byTicker;
+    for (const t of [...rowMap.keys()]) if (!byTicker.has(t)) rowMap.delete(t);
+    renderTable();
+
+    // Trade tape
+    renderTrades(data.recent_trades || []);
+
+    // Heavy hitters
+    renderHitters(data.heavy_hitters || []);
+
+    // System: percentiles move every message but nobody reads them faster than once a second
+    if (nowT - lastSysAt >= 1000) { lastSysAt = nowT; renderSystem(data); }
+
+    updateFreshness();
+  }
+
+  function renderTrades(trades) {
+    const feed = document.getElementById('trade-feed');
+    document.getElementById('tape-count').textContent = trades.length;
+    if (trades.length === 0) {
+      setHtml(feed, '<div style="padding:20px;text-align:center;color:var(--dimmed);font-size:11px">Waiting for trades&hellip;</div>');
+      return;
+    }
+    let html = '';
+    for (let i = trades.length - 1; i >= Math.max(0, trades.length - 40); i--) {
+      const t = trades[i];
+      const cls = t.side === 'yes' ? 'trade-yes' : 'trade-no';
+      const label = (t.side || '?').toUpperCase();
+      const meta = (t.count ? fmt(t.count) + ' @ ' : '') + (t.price ? '$' + escapeHtml(t.price) : '');
+      html += '<div class="trade-row">' +
+        '<span class="trade-side ' + cls + '">' + escapeHtml(label) + '</span>' +
+        '<span class="trade-ticker" title="' + escapeHtml(t.ticker) + '">' + nameHtml(t.ticker, t.title) + '</span>' +
+        '<span class="trade-meta">' + meta + '</span>' +
+        '</div>';
+    }
+    setHtml(feed, html);
+  }
+
+  function renderHitters(hitters) {
+    const el = document.getElementById('hitters-list');
+    if (hitters.length === 0) {
+      setHtml(el, '<div style="padding:10px;text-align:center;color:var(--dimmed);font-size:10px">Collecting data&hellip;</div>');
+      return;
+    }
+    const maxScore = hitters[0]?.score || 1;
+    let html = '';
+    for (const h of hitters.slice(0, 10)) {
+      const pct = Math.min((h.score / maxScore) * 100, 100);
+      html += '<div class="hitter-row">' +
+        '<span class="hitter-name" title="' + escapeHtml(h.ticker) + '">' + nameHtml(h.ticker) + '</span>' +
+        '<div class="hitter-bar-bg"><div class="hitter-bar-fill" style="width:' + pct + '%"></div></div>' +
+        '<span class="hitter-score">' + fmt(h.score) + '</span>' +
+        '</div>';
+    }
+    setHtml(el, html);
+  }
+
+  const LAT_ROWS = [
+    ['venue_to_recv.trade',  'Kalshi → us (trade)'],
+    ['venue_to_recv.ticker', 'Kalshi → us (tick)'],
+    ['venue_to_recv.book',   'Kalshi → us (book)'],
+    ['recv_to_hub',          'parse + update'],
+    ['build',                'build payload'],
+    ['queue_wait',           'queue wait'],
+    ['serialize_send',       'serialize + ws'],
+    ['recv_to_send',         'server total'],
+    ['send_to_render',       'send → paint'],
+    ['loop_lag',             'event-loop lag'],
+    ['db_flush',             'DuckDB flush'],
+    ['queue_depth',          'queue depth'],
+  ];
+
+  function latClass(v) {
+    if (v == null) return '';
+    return v >= 500 ? 'lat-bad' : v >= 100 ? 'lat-warn' : '';
+  }
+
+  function renderSystem(data) {
+    // Concentration
+    const conc = data.concentration;
+    if (conc != null) {
+      const pct = Math.min(conc * 100, 100);
+      document.getElementById('sys-conc').textContent = pct.toFixed(2) + '%';
+      const bar = document.getElementById('conc-bar');
+      bar.style.width = Math.min(pct * 5, 100) + '%';
+      bar.style.background = pct > 10 ? 'var(--red)' : pct > 3 ? 'var(--amber)' : 'var(--blue)';
+    }
+
+    // Latency
+    const lat = data.latency;
+    const grid = document.getElementById('latency-grid');
+    if (!lat || !lat.stages) { setHtml(grid, ''); return; }
+
+    let html = '<div class="lat-grid">' +
+      '<div class="lat-hdr">stage</div><div class="lat-hdr num">p50</div><div class="lat-hdr num">p99</div><div class="lat-hdr num">p99.9</div>';
+
+    for (const [key, label] of LAT_ROWS) {
+      const s = lat.stages[key];
+      if (!s) continue;
+      const isCount = key === 'queue_depth';
+      const cls = v => isCount ? '' : latClass(v);
+      html += '<div class="lat-stage">' + escapeHtml(label) + '</div>' +
+        '<div class="lat-val ' + cls(s.p50) + '">' + s.p50 + '</div>' +
+        '<div class="lat-val ' + cls(s.p99) + '">' + s.p99 + '</div>' +
+        '<div class="lat-val ' + cls(s.p999) + '">' + s.p999 + '</div>';
+    }
+    html += '</div>';
+
+    const dropped = (lat.counters || {}).payloads_dropped || 0;
+    const deduped = (lat.counters || {}).trades_deduped || 0;
+    html += '<div class="sys-footer">' +
+      'dropped: <span class="' + (dropped ? 'lat-warn' : '') + '">' + dropped + '</span>' +
+      ' &middot; deduped: ' + deduped +
+      '</div>';
+
+    setHtml(grid, html);
+  }
+
+  // Column sorting
+  document.querySelectorAll('thead th[data-key]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.key;
+      if (sortKey === key) { sortDesc = !sortDesc; }
+      else { sortKey = key; sortDesc = true; }
+      document.querySelectorAll('thead th').forEach(t => t.classList.remove('sorted'));
+      th.classList.add('sorted');
+      needResort = true;
+      if (currentData) render(currentData);
+    });
+  });
+
+  document.getElementById('books-only').addEventListener('change', (e) => {
+    booksOnly = e.target.checked;
+    needResort = true;
+    if (currentData) scheduleRender();
+  });
+
+  document.getElementById('search-input').addEventListener('input', (e) => {
+    searchFilter = e.target.value;
+    needResort = true;
+    if (currentData) scheduleRender();
+  });
+
+  connect();
+</script>
+</body>
+</html>

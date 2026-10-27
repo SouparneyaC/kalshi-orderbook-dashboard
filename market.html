@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market · Kalshi Live Terminal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Same tokens as dashboard.html so the two pages look like one product. */
+  :root {
+    --bg: #12141a;
+    --surface: #1a1d26;
+    --surface-raised: #1f2230;
+    --border: #252936;
+    --border-subtle: #1e2130;
+    --text: #c9cdd6;
+    --text-bright: #e8eaf0;
+    --muted: #6b7280;
+    --dimmed: #454b5a;
+    --green: #22c55e;
+    --green-dim: rgba(34,197,94,0.12);
+    --green-mid: rgba(34,197,94,0.30);
+    --red: #ef4444;
+    --red-dim: rgba(239,68,68,0.12);
+    --red-mid: rgba(239,68,68,0.30);
+    --amber: #f59e0b;
+    --amber-dim: rgba(245,158,11,0.10);
+    --blue: #3b82f6;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+    overflow: hidden;
+    font-variant-numeric: tabular-nums;
+  }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ---- Header ---- */
+  .header {
+    height: 52px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 16px;
+  }
+  .back { font-size: 12px; white-space: nowrap; }
+  .sep { width: 1px; height: 26px; background: var(--border); flex-shrink: 0; }
+  .head-title { min-width: 0; flex: 0 1 auto; }
+  .head-title .t { color: var(--text-bright); font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .head-title .k { font-family: var(--mono); font-size: 10px; color: var(--dimmed); }
+  .quote { display: flex; gap: 22px; margin-left: auto; }
+  .q-item .k { font-size: 9px; color: var(--dimmed); text-transform: uppercase; letter-spacing: .05em; }
+  .q-item .v { font-family: var(--mono); font-size: 13px; color: var(--text-bright); }
+  .q-item .v.bid { color: var(--green); } .q-item .v.ask { color: var(--red); }
+  .feed-pill { font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 3px; white-space: nowrap; }
+  .feed-live    { background: var(--green-dim); color: var(--green); }
+  .feed-lagging { background: var(--amber-dim); color: var(--amber); }
+  .feed-dead    { background: var(--red-dim); color: var(--red); }
+
+  .banner { display: none; padding: 8px 16px; background: var(--amber-dim); color: var(--amber); border-bottom: 1px solid var(--border); font-size: 12px; }
+
+  /* ---- Grid: book column | depth + info column ---- */
+  .main { height: calc(100vh - 52px); display: grid; grid-template-columns: minmax(340px, 440px) 1fr; }
+  .banner.on + .main { height: calc(100vh - 52px - 34px); }
+  .col { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+  .col-left { border-right: 1px solid var(--border); }
+  .card { display: flex; flex-direction: column; min-height: 0; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: var(--surface-raised); border-bottom: 1px solid var(--border-subtle); }
+  .card-head .title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .card-head .badge { font-family: var(--mono); font-size: 10px; color: var(--dimmed); }
+
+  /* ---- Order book (the "best order book" style: depth bars, imbalance bar, spread row) ---- */
+  .book { flex: 1 1 0; }
+  .book-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 10px 14px 6px; }
+  .bs .k { font-size: 9px; color: var(--dimmed); text-transform: uppercase; letter-spacing: .05em; }
+  .bs .v { font-family: var(--mono); font-size: 15px; color: var(--text-bright); }
+  .imb { margin: 4px 14px 4px; height: 6px; display: flex; border-radius: 3px; overflow: hidden; background: var(--red); }
+  .imb .y { background: var(--green); transition: width .15s; }
+  .imb-labels { display: flex; justify-content: space-between; margin: 0 14px 8px; font-size: 9px; color: var(--dimmed); }
+  .lad-hdr { display: flex; justify-content: space-between; font-size: 9px; color: var(--dimmed); padding: 4px 18px; text-transform: uppercase; letter-spacing: .05em; border-top: 1px solid var(--border-subtle); }
+  .side { flex: 1 1 0; min-height: 0; overflow-y: auto; display: flex; padding: 0 14px; }
+  /* asks: DOM order is best-first, shown column-reverse so the best ask sits right above the spread */
+  .side.asks { flex-direction: column-reverse; justify-content: flex-start; }
+  .side.bids { flex-direction: column; }
+  .lr { position: relative; flex: 0 0 auto; display: flex; justify-content: space-between; padding: 2px 4px; font-family: var(--mono); font-size: 11px; }
+  .lr .bar { position: absolute; top: 1px; bottom: 1px; right: 0; transition: width .12s ease-out; }
+  .lr span { position: relative; z-index: 1; }
+  .asks .lr .bar { background: var(--red-mid); } .asks .lr .px { color: var(--red); }
+  .bids .lr .bar { background: var(--green-mid); } .bids .lr .px { color: var(--green); }
+  .lr .q { color: var(--text); }
+  .spread-row { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 5px 0; margin: 2px 14px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .spread-row b { color: var(--text-bright); font-weight: 500; }
+  .empty { padding: 18px 14px; color: var(--dimmed); font-size: 11px; }
+
+  /* ---- Depth chart ---- */
+  .depth { flex: 1 1 0; }
+  .depth-tools { display: flex; gap: 4px; }
+  .rng { font-family: var(--mono); font-size: 10px; color: var(--muted); background: none; border: 1px solid var(--border); border-radius: 3px; padding: 1px 7px; cursor: pointer; }
+  .rng:hover { color: var(--text); }
+  .rng.on { color: var(--text-bright); border-color: var(--blue); }
+  .chart-wrap { position: relative; flex: 1 1 0; min-height: 0; }
+  .chart-wrap svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .tip { position: absolute; pointer-events: none; display: none; background: var(--surface-raised); border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px; font-family: var(--mono); font-size: 10px; color: var(--text-bright); white-space: nowrap; z-index: 5; }
+  .tip .s { color: var(--muted); }
+  .legend { display: flex; gap: 14px; padding: 0 14px 6px; font-size: 10px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+
+  /* ---- Lower panels (trades, info) ---- */
+  .trades { flex: 0 0 38%; }
+  .info { flex: 0 0 38%; }
+  .scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; }
+
+  .t-row { display: grid; grid-template-columns: 70px 44px 1fr 70px; gap: 8px; padding: 3px 14px; border-bottom: 1px solid var(--border-subtle); font-family: var(--mono); font-size: 11px; align-items: center; }
+  .t-row:hover { background: rgba(255,255,255,0.02); }
+  .t-hdr { position: sticky; top: 0; background: var(--surface); font-family: inherit; font-size: 9px; color: var(--dimmed); text-transform: uppercase; letter-spacing: .05em; }
+  .r { text-align: right; } .mut { color: var(--muted); }
+  .pill { font-size: 9px; font-weight: 600; text-align: center; padding: 1px 0; border-radius: 2px; }
+  .pill.y { background: var(--green-dim); color: var(--green); } .pill.n { background: var(--red-dim); color: var(--red); }
+  .i-row { display: grid; grid-template-columns: 110px 1fr; gap: 10px; padding: 4px 14px; border-bottom: 1px solid var(--border-subtle); font-size: 11px; }
+  .i-k { color: var(--muted); } .i-v { color: var(--text); min-width: 0; overflow-wrap: anywhere; }
+  .i-sec { padding: 10px 14px 2px; font-size: 9px; font-weight: 600; color: var(--dimmed); text-transform: uppercase; letter-spacing: .05em; }
+  .rules { padding: 2px 14px 8px; font-size: 11px; line-height: 1.5; }
+  .legs { padding: 2px 14px 8px 30px; font-size: 11px; line-height: 1.5; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 900px) {
+    body { overflow: auto; }
+    .main { grid-template-columns: 1fr; height: auto; }
+    .col-left { border-right: none; }
+    .book, .depth { flex: 0 0 auto; height: 520px; }
+    .trades, .info { flex: 0 0 auto; height: 320px; }
+    .quote { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a class="back" href="/">&larr; Dashboard</a>
+  <div class="sep"></div>
+  <div class="head-title"><div class="t" id="h-title">Loading&hellip;</div><div class="k" id="h-ticker"></div></div>
+  <div class="quote">
+    <div class="q-item"><div class="k">YES</div><div class="v" id="q-price">--</div></div>
+    <div class="q-item"><div class="k">Bid</div><div class="v bid" id="q-bid">--</div></div>
+    <div class="q-item"><div class="k">Ask</div><div class="v ask" id="q-ask">--</div></div>
+    <div class="q-item"><div class="k">Spread</div><div class="v" id="q-spread">--</div></div>
+    <div class="q-item"><div class="k">Volume</div><div class="v" id="q-vol">--</div></div>
+    <div class="q-item"><div class="k">Open int.</div><div class="v" id="q-oi">--</div></div>
+    <div class="q-item"><div class="k">$ Volume</div><div class="v" id="q-dvol">--</div></div>
+  </div>
+  <div class="feed-pill feed-dead" id="pill">Connecting</div>
+</div>
+<div class="banner" id="banner"></div>
+
+<div class="main">
+  <!-- Left: order book, then this market's trades -->
+  <div class="col col-left">
+    <div class="card book">
+      <div class="card-head"><span class="title">Order book</span><span class="badge" id="lvl-badge">--</span></div>
+      <div class="book-stats">
+        <div class="bs"><div class="k">Implied</div><div class="v" id="b-implied">--</div></div>
+        <div class="bs"><div class="k">Bid depth</div><div class="v" id="b-bd">--</div></div>
+        <div class="bs"><div class="k">Ask depth</div><div class="v" id="b-ad">--</div></div>
+        <div class="bs"><div class="k">Imbalance</div><div class="v" id="b-imb">--</div></div>
+      </div>
+      <div class="imb"><div class="y" id="imb-y" style="width:50%"></div></div>
+      <div class="imb-labels"><span id="imb-yl">YES --</span><span id="imb-nl">NO --</span></div>
+      <div class="lad-hdr"><span>Price (YES)</span><span>Contracts</span></div>
+      <div class="side asks" id="asks"></div>
+      <div class="spread-row"><span>spread</span><b id="b-spread">--</b></div>
+      <div class="side bids" id="bids"></div>
+    </div>
+    <div class="card trades">
+      <div class="card-head"><span class="title">This market's trades</span><span class="badge" id="tape-badge">0</span></div>
+      <div class="scroll" id="tape"><div class="empty">Waiting for trades&hellip;</div></div>
+    </div>
+  </div>
+
+  <!-- Right: depth chart, then market info -->
+  <div class="col">
+    <div class="card depth">
+      <div class="card-head">
+        <span class="title">Depth (cumulative contracts)</span>
+        <div class="depth-tools" id="rng-tools">
+          <button class="rng" data-r="5">&plusmn;5&cent;</button>
+          <button class="rng on" data-r="10">&plusmn;10&cent;</button>
+          <button class="rng" data-r="25">&plusmn;25&cent;</button>
+          <button class="rng" data-r="all">All</button>
+        </div>
+      </div>
+      <div class="chart-wrap" id="chart-wrap"><svg id="chart" role="img" aria-label="Cumulative depth chart"></svg><div class="tip" id="tip"></div></div>
+      <div class="legend"><span><i style="background:var(--green)"></i>Bids (YES buyers)</span><span><i style="background:var(--red)"></i>Asks (YES sellers)</span></div>
+    </div>
+    <div class="card info">
+      <div class="card-head"><span class="title">Market info</span><span class="badge" id="info-badge"></span></div>
+      <div class="scroll" id="info"><div class="empty">Loading&hellip;</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function esc(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  const $ = (id) => document.getElementById(id);
+  const TICKER = decodeURIComponent(location.pathname.split('/').pop());
+
+  // --- Formatting (same rules as the home page) ---
+  function fmt(v) {
+    if (v == null) return '--';
+    const n = parseFloat(v);
+    if (isNaN(n)) return '--';
+    if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+    return n.toFixed(0);
+  }
+  function fmtDol(v) { const f = fmt(v); return f === '--' ? f : '$' + f; }
+  function fmtAge(ms) {
+    if (ms == null || ms < 0) return '--';
+    if (ms < 1000) return (ms / 1000).toFixed(1) + 's';
+    const s = Math.floor(ms / 1000);
+    if (s < 60) return s + 's';
+    if (s < 3600) return Math.floor(s / 60) + 'm';
+    return Math.floor(s / 3600) + 'h';
+  }
+
+  // --- Parlay labels (same function as dashboard.html) ---
+  // Kalshi parlay titles are the legs glued together: "yes Seattle,no Toronto wins by over 2.5 points,..."
+  function parlayLegs(ticker, title) {
+    const isParlay = /^KXMVE/.test(ticker || '') || /^(yes|no) /i.test(title || '');
+    if (!isParlay) return null;
+    if (!title || title === ticker) return [];
+    return title.split(/,(?=(?:yes|no) )/i).map(s => s.trim());
+  }
+  function shortLeg(leg) {
+    const m = /^(yes|no) (.*)$/i.exec(leg);
+    let name = m ? m[2] : leg;
+    if (name.length > 26) name = name.slice(0, 25) + '…';
+    return m && m[1].toLowerCase() === 'no' ? 'no ' + name : name;
+  }
+  function displayTitle(ticker, title) {
+    const legs = parlayLegs(ticker, title);
+    if (legs == null) return title || ticker;
+    if (legs.length === 0) return 'Parlay · ' + ticker.slice(-8);
+    const n = legs.length;
+    const names = legs.slice(0, 2).map(shortLeg).join(', ');
+    return 'Parlay · ' + n + (n === 1 ? ' leg' : ' legs') + ' · ' + names + (n > 2 ? ' +' + (n - 2) : '');
+  }
+
+  // --- State ---
+  const state = { title: null, quote: null, book: null, trades: null, feed: null, hasBook: true, rangeC: 10, tipX: null };
+  let ws = null, lastMessageAt = Date.now(), stopped = false, backoff = 500;
+
+  function connect() {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(proto + '//' + location.host + '/ws/market/' + encodeURIComponent(TICKER));
+    ws.onopen = () => { backoff = 500; lastMessageAt = Date.now(); };
+    ws.onmessage = (ev) => {
+      lastMessageAt = Date.now();
+      const f = JSON.parse(ev.data);
+      if (f.type !== 'market') return;
+      state.title = f.title; state.feed = f.feed; state.recvTs = f.recv_ts; state.hasBook = f.has_book;
+      if (f.quote) state.quote = f.quote;
+      if (f.book) state.book = f.book;
+      if (f.trades) state.trades = f.trades;
+      schedule();
+    };
+    ws.onclose = (ev) => {
+      if (ev.code === 4404) { stopped = true; showBanner('We no longer hold an order book for this market (books follow the most traded markets). '); return; }
+      setTimeout(connect, backoff);
+      backoff = Math.min(backoff * 2, 5000);
+      schedule();
+    };
+    ws.onerror = () => ws.close();
+  }
+  // The server sends at least one frame a second; 5 s of silence means the socket died quietly.
+  setInterval(() => {
+    if (stopped || !ws || ws.readyState !== WebSocket.OPEN) return;
+    if (Date.now() - lastMessageAt > 5000) { const d = ws; d.onclose = d.onerror = d.onmessage = null; try { d.close(); } catch (e) {} connect(); }
+  }, 1000);
+
+  function showBanner(text) {
+    const b = $('banner'); b.innerHTML = esc(text) + '<a href="/">Back to the dashboard</a>'; b.style.display = 'block'; b.classList.add('on');
+  }
+  function hideBanner() { const b = $('banner'); b.style.display = 'none'; b.classList.remove('on'); }
+
+  let pending = false;
+  function schedule() {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(() => { pending = false; render(); });
+  }
+
+  // --- Render ---
+  function render() {
+    const q = state.quote;
+    const title = displayTitle(TICKER, state.title);
+    $('h-title').textContent = title;
+    $('h-title').title = state.title || '';
+    $('h-ticker').textContent = TICKER;
+    document.title = title + ' · Kalshi';
+    if (q) {
+      $('q-price').textContent = q.price ? '$' + q.price : '--';
+      $('q-bid').textContent = q.yes_bid ? '$' + q.yes_bid : '--';
+      $('q-ask').textContent = q.yes_ask ? '$' + q.yes_ask : '--';
+      const s = q.yes_bid && q.yes_ask ? parseFloat(q.yes_ask) - parseFloat(q.yes_bid) : null;
+      $('q-spread').textContent = s != null && s > 0 ? '$' + s.toFixed(2) : '--';
+      $('q-vol').textContent = fmt(q.volume);
+      $('q-oi').textContent = fmt(q.open_interest);
+      $('q-dvol').textContent = fmtDol(q.dollar_volume);
+    }
+    if (!state.hasBook && !stopped) showBanner('This market’s order book was dropped from tracking; the numbers below are the last we had. ');
+    else if (!stopped) hideBanner();
+    updatePill();
+    renderBook();
+    drawDepth();
+    if (window.renderExtras) window.renderExtras();
+  }
+
+  function updatePill() {
+    const pill = $('pill');
+    const f = state.feed;
+    let cls = 'dead', age = null;
+    if (f && f.connected && f.last_msg_ms && ws && ws.readyState === WebSocket.OPEN) {
+      age = Date.now() - f.last_msg_ms;
+      cls = age >= 10000 ? 'dead' : age >= 3000 ? 'lagging' : 'live';
+    }
+    pill.className = 'feed-pill feed-' + cls;
+    const mAge = state.recvTs ? ' · mkt ' + fmtAge(Date.now() - state.recvTs) : '';
+    pill.textContent = 'Kalshi · ' + { live: 'Live', lagging: 'Lagging', dead: 'Dead' }[cls] + (age != null ? ' · ' + fmtAge(age) : '') + mAge;
+  }
+  setInterval(updatePill, 1000);
+
+  // Ladder rows are reused by index and only their text and bar width change, so a book update
+  // never rebuilds the DOM and the bars glide (CSS transition) instead of flickering.
+  function syncRows(box, levels, maxQty) {
+    const rows = box.children;
+    for (let i = 0; i < levels.length; i++) {
+      let r = rows[i];
+      if (!r) {
+        r = document.createElement('div'); r.className = 'lr';
+        r.innerHTML = '<i class="bar"></i><span class="px"></span><span class="q"></span>';
+        box.appendChild(r);
+      }
+      const [px, qty] = levels[i];
+      const w = maxQty > 0 ? Math.min(100, Math.max(1.5, parseFloat(qty) / maxQty * 100)) : 0;
+      r.children[0].style.width = w.toFixed(1) + '%';
+      const pxText = '$' + px, qText = fmt(qty);
+      if (r.children[1].textContent !== pxText) r.children[1].textContent = pxText;
+      if (r.children[2].textContent !== qText) r.children[2].textContent = qText;
+    }
+    while (rows.length > levels.length) box.removeChild(box.lastChild);
+  }
+
+  let lastBook = null;
+  function renderBook() {
+    const b = state.book;
+    if (!b || b === lastBook) return;      // the server only sends a book when it changed
+    lastBook = b;
+    const bids = b.depth.bids, asks = b.depth.asks;
+    // Bars are scaled to the biggest level among the ~15 nearest the spread, so one huge far-away
+    // order can't flatten every bar that matters.
+    const near = [...bids.slice(0, 15), ...asks.slice(0, 15)].map(l => parseFloat(l[1]));
+    const maxQty = Math.max(1, ...near);
+    syncRows($('asks'), asks, maxQty);
+    syncRows($('bids'), bids, maxQty);
+    $('b-implied').textContent = b.implied_prob || '--';
+    $('b-bd').textContent = fmt(b.yes_depth_total);
+    $('b-ad').textContent = fmt(b.no_depth_total);
+    $('b-imb').textContent = b.depth_imbalance_near || '--';
+    $('b-spread').textContent = b.yes_spread != null ? '$' + b.yes_spread : '--';
+    $('lvl-badge').textContent = (b.yes_levels || 0) + ' bid / ' + (b.no_levels || 0) + ' ask levels';
+    const yN = parseFloat(b.yes_depth_near) || 0, nN = parseFloat(b.no_depth_near) || 0;
+    $('imb-y').style.width = ((yN + nN) > 0 ? yN / (yN + nN) * 100 : 50).toFixed(1) + '%';
+    $('imb-yl').textContent = 'YES ' + fmt(yN) + ' within 5¢';
+    $('imb-nl').textContent = 'NO ' + fmt(nN);
+  }
+
+  // --- Depth chart: cumulative step areas, bids left (green), asks right (red) ---
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  let geo = null;   // what the last draw plotted, for the hover tooltip
+
+  function cumulative(levels) {      // best-first levels -> [{p, c}] with c = contracts at this price or better
+    let c = 0;
+    return levels.map(([p, q]) => ({ p: parseFloat(p), c: (c += parseFloat(q)) }));
+  }
+
+  function drawDepth() {
+    const svg = $('chart'), wrap = $('chart-wrap');
+    const W = wrap.clientWidth, H = wrap.clientHeight;
+    if (!W || !H) return;
+    const b = state.book;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.replaceChildren();
+    if (!b || (!b.depth.bids.length && !b.depth.asks.length)) { geo = null; return; }
+    const bids = cumulative(b.depth.bids), asks = cumulative(b.depth.asks);
+    const bestBid = bids.length ? bids[0].p : null, bestAsk = asks.length ? asks[0].p : null;
+    const mid = bestBid != null && bestAsk != null ? (bestBid + bestAsk) / 2 : (bestBid ?? bestAsk);
+    let lo, hi;
+    if (state.rangeC === 'all') {
+      lo = bids.length ? bids[bids.length - 1].p : mid; hi = asks.length ? asks[asks.length - 1].p : mid;
+      const pad = Math.max(0.01, (hi - lo) * 0.03); lo -= pad; hi += pad;
+    } else { const r = state.rangeC / 100; lo = mid - r; hi = mid + r; }
+    lo = Math.max(0, lo); hi = Math.min(1, hi);
+    const inB = bids.filter(l => l.p >= lo), inA = asks.filter(l => l.p <= hi);
+    const yMax = Math.max(1, inB.length ? inB[inB.length - 1].c : 0, inA.length ? inA[inA.length - 1].c : 0) * 1.08;
+    const m = { l: 44, r: 12, t: 10, b: 24 };
+    const x = (p) => m.l + (p - lo) / (hi - lo) * (W - m.l - m.r);
+    const y = (c) => H - m.b - c / yMax * (H - m.t - m.b);
+    const mk = (tag, attrs) => { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); svg.appendChild(e); return e; };
+    const green = css('--green'), red = css('--red'), grid = css('--border'), muted = css('--muted');
+
+    // recessive grid + y labels
+    for (let i = 0; i <= 3; i++) {
+      const c = yMax / 1.08 * i / 3, yy = y(c);
+      mk('line', { x1: m.l, x2: W - m.r, y1: yy, y2: yy, stroke: grid, 'stroke-width': 1, 'stroke-dasharray': i ? '2 3' : '' });
+      const t = mk('text', { x: m.l - 6, y: yy + 3, 'text-anchor': 'end', fill: muted, 'font-size': 9, 'font-family': 'IBM Plex Mono, monospace' });
+      t.textContent = fmt(c);
+    }
+    // x ticks every 5c (or 10/20c when zoomed out)
+    const span = (hi - lo) * 100, stepC = span <= 30 ? 5 : span <= 60 ? 10 : 20;
+    for (let c = Math.ceil(lo * 100 / stepC) * stepC; c <= hi * 100 + 1e-9; c += stepC) {
+      const xx = x(c / 100);
+      mk('line', { x1: xx, x2: xx, y1: H - m.b, y2: H - m.b + 3, stroke: grid });
+      const t = mk('text', { x: xx, y: H - 8, 'text-anchor': 'middle', fill: muted, 'font-size': 9, 'font-family': 'IBM Plex Mono, monospace' });
+      t.textContent = '$' + (c / 100).toFixed(2);
+    }
+    // bids: depth at price p = contracts bidding p or higher, so it steps DOWN as p rises toward the spread
+    if (inB.length) {
+      let d = 'M' + x(lo) + ',' + y(inB[inB.length - 1].c);
+      for (let i = inB.length - 1; i >= 0; i--) {
+        d += ' L' + x(inB[i].p) + ',' + y(inB[i].c);
+        d += ' L' + x(inB[i].p) + ',' + y(i > 0 ? inB[i - 1].c : 0);
+      }
+      mk('path', { d: d + ' L' + x(lo) + ',' + y(0) + ' Z', fill: green, 'fill-opacity': 0.16, stroke: 'none' });
+      mk('path', { d: d, fill: 'none', stroke: green, 'stroke-width': 2, 'stroke-linejoin': 'round' });
+    }
+    if (inA.length) {
+      let d = 'M' + x(inA[0].p) + ',' + y(0);
+      for (let i = 0; i < inA.length; i++) {
+        d += ' L' + x(inA[i].p) + ',' + y(inA[i].c);
+        if (i + 1 < inA.length) d += ' L' + x(inA[i + 1].p) + ',' + y(inA[i].c);
+      }
+      d += ' L' + x(hi) + ',' + y(inA[inA.length - 1].c);
+      mk('path', { d: d + ' L' + x(hi) + ',' + y(0) + ' Z', fill: red, 'fill-opacity': 0.16, stroke: 'none' });
+      mk('path', { d: d, fill: 'none', stroke: red, 'stroke-width': 2, 'stroke-linejoin': 'round' });
+    }
+    if (mid != null && mid >= lo && mid <= hi) {
+      mk('line', { x1: x(mid), x2: x(mid), y1: m.t, y2: H - m.b, stroke: muted, 'stroke-dasharray': '3 3', 'stroke-width': 1 });
+    }
+    geo = { m, W, H, lo, hi, x, y, bids: inB, asks: inA, bestBid, bestAsk };
+    const hover = mk('line', { id: 'hover', y1: m.t, y2: H - m.b, stroke: muted, 'stroke-width': 1, style: 'display:none' });
+    if (state.tipX != null) showTip(state.tipX);
+  }
+
+  function showTip(px) {            // px = mouse x in chart pixels
+    const tip = $('tip'), hover = $('hover');
+    if (!geo || !hover) return;
+    const { m, W, lo, hi } = geo;
+    if (px < m.l || px > W - m.r) { tip.style.display = 'none'; hover.style.display = 'none'; return; }
+    const p = lo + (px - m.l) / (W - m.l - m.r) * (hi - lo);
+    let side = null, c = null;
+    if (geo.bestBid != null && p <= geo.bestBid) {         // contracts bidding p or better
+      side = 'Bids'; const lv = geo.bids.filter(l => l.p >= p); c = lv.length ? lv[lv.length - 1].c : 0;
+    } else if (geo.bestAsk != null && p >= geo.bestAsk) {  // contracts offered at p or better
+      side = 'Asks'; const lv = geo.asks.filter(l => l.p <= p); c = lv.length ? lv[lv.length - 1].c : 0;
+    }
+    hover.setAttribute('x1', px); hover.setAttribute('x2', px); hover.style.display = '';
+    tip.innerHTML = '<span class="s">Price</span> $' + p.toFixed(3) + '<br>' +
+      (side ? '<span class="s">' + side + ' to here</span> ' + fmt(c) + ' contracts' : '<span class="s">inside the spread</span>');
+    tip.style.display = 'block';
+    const tw = tip.offsetWidth;
+    tip.style.left = Math.min(Math.max(4, px + 12), W - tw - 4) + 'px';
+    tip.style.top = '8px';
+  }
+  $('chart-wrap').addEventListener('mousemove', (e) => { const r = $('chart-wrap').getBoundingClientRect(); state.tipX = e.clientX - r.left; showTip(state.tipX); });
+  $('chart-wrap').addEventListener('mouseleave', () => { state.tipX = null; $('tip').style.display = 'none'; const h = $('hover'); if (h) h.style.display = 'none'; });
+  $('rng-tools').addEventListener('click', (e) => {
+    const btn = e.target.closest('.rng'); if (!btn) return;
+    state.rangeC = btn.dataset.r === 'all' ? 'all' : parseInt(btn.dataset.r, 10);
+    for (const b of document.querySelectorAll('.rng')) b.classList.toggle('on', b === btn);
+    drawDepth();
+  });
+  new ResizeObserver(() => drawDepth()).observe($('chart-wrap'));
+
+  // --- This market's trades ---
+  let lastTrades = null;
+  function renderTrades() {
+    const tr = state.trades;
+    if (!tr || tr === lastTrades) return;
+    lastTrades = tr;
+    $('tape-badge').textContent = tr.length;
+    if (!tr.length) { $('tape').innerHTML = '<div class="empty">No trades yet.</div>'; return; }
+    let html = '<div class="t-row t-hdr"><span>Time</span><span>Side</span><span class="r">Size @ YES price</span><span class="r">Paid</span></div>';
+    for (let i = tr.length - 1; i >= 0; i--) {         // newest first
+      const t = tr[i];
+      const yes = t.side === 'yes';
+      const px = parseFloat(t.price), n = parseFloat(t.count);
+      const paid = isNaN(px) || isNaN(n) ? null : n * (yes ? px : 1 - px);
+      const d = new Date(t.ts);
+      const time = isNaN(d) ? '--' : d.toLocaleTimeString([], { hour12: false });
+      html += '<div class="t-row"><span class="mut">' + esc(time) + '</span>' +
+        '<span class="pill ' + (yes ? 'y' : 'n') + '">' + (yes ? 'YES' : 'NO') + '</span>' +
+        '<span class="r">' + fmt(t.count) + ' @ $' + esc(t.price) + '</span>' +
+        '<span class="r mut">' + (paid == null ? '--' : fmtDol(paid)) + '</span></div>';
+    }
+    $('tape').innerHTML = html;
+  }
+
+  // --- Market info (Kalshi REST via /api/market/{ticker}/info, refreshed every 60 s) ---
+  let info = null, infoError = null, lastInfoKey = null;
+  async function loadInfo() {
+    try {
+      const r = await fetch('/api/market/' + encodeURIComponent(TICKER) + '/info');
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || r.status);
+      info = j; infoError = null;
+    } catch (e) { infoError = String(e.message || e); }
+    lastInfoKey = null;
+    schedule();
+  }
+  function fmtTime(iso) {
+    if (!iso) return '--';
+    const d = new Date(iso);
+    if (isNaN(d)) return esc(iso);
+    const ms = d - Date.now(), abs = Math.abs(ms);
+    const rel = abs < 3600e3 ? Math.round(abs / 60e3) + 'm' : abs < 86400e3 ? Math.round(abs / 3600e3) + 'h' : Math.round(abs / 86400e3) + 'd';
+    return esc(d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })) +
+      ' <span class="mut">(' + (ms >= 0 ? 'in ' + rel : rel + ' ago') + ')</span>';
+  }
+  function renderInfo() {
+    const el = $('info');
+    const legs = parlayLegs(TICKER, state.title);
+    const key = (info ? info.ticker : '') + '|' + infoError + '|' + (legs ? legs.length : '');
+    if (key === lastInfoKey) return;
+    lastInfoKey = key;
+    if (infoError) { el.innerHTML = '<div class="empty">Could not load market info (' + esc(infoError) + ').</div>'; return; }
+    if (!info) return;
+    $('info-badge').textContent = info.status || '';
+    const row = (k, v) => v ? '<div class="i-row"><span class="i-k">' + k + '</span><span class="i-v">' + v + '</span></div>' : '';
+    const srcs = (info.settlement_sources || []).map(s => s.url ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer">' + esc(s.name || s.url) + '</a>' : esc(s.name)).join(', ');
+    const legList = legs && legs.length ? legs : null;
+    let html = row('Category', esc(info.category)) +
+      row('Event', esc(info.event_title) + (info.event_subtitle ? ' <span class="mut">' + esc(info.event_subtitle) + '</span>' : '')) +
+      row('Opened', info.open_time ? fmtTime(info.open_time) : '') +
+      row('Closes', info.close_time ? fmtTime(info.close_time) : '') +
+      row('Expected expiry', info.expected_expiration_time ? fmtTime(info.expected_expiration_time) : '') +
+      row('24h volume', info.volume_24h ? fmt(info.volume_24h) + ' contracts' : '') +
+      row('Settles from', srcs);
+    if (legList) {
+      html += '<div class="i-sec">Parlay legs (' + legList.length + ')</div><ul class="legs">' +
+        legList.map(l => '<li>' + esc(l) + '</li>').join('') + '</ul>';
+    }
+    if (info.rules_primary) html += '<div class="i-sec">Rules</div><p class="rules">' + esc(info.rules_primary) + '</p>';
+    if (info.rules_secondary) html += '<p class="rules mut">' + esc(info.rules_secondary) + '</p>';
+    el.innerHTML = html;
+  }
+
+  window.renderExtras = function () { renderTrades(); renderInfo(); };
+  loadInfo();
+  setInterval(loadInfo, 60000);
+
+  connect();
+</script>
+</body>
+</html>
