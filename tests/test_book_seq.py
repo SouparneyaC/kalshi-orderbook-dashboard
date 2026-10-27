@@ -11,10 +11,10 @@ import unittest
 os.environ.setdefault("KALSHI_KEY_ID", "test")            # kalshi_feed imports auth.py
 os.environ.setdefault("KALSHI_PRIVATE_KEY_PATH", "unused")
 
-import kalshi_feed
-import market_state
-from book_seq import BookSeqTracker
-from orderbook import OrderBook
+from app.kalshi import kalshi_feed
+from app.core import market_state
+from app.kalshi.book_seq import BookSeqTracker
+from app.core.orderbook import OrderBook
 
 SID = 4
 A, B = "KXA-26OCT24-X", "KXB-26OCT24-Y"

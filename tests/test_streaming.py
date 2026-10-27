@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from streaming import DistinctCounter, MisraGries, WindowedTradeBuffer  # noqa: E402
+from app.core.streaming import DistinctCounter, MisraGries, WindowedTradeBuffer  # noqa: E402
 
 
 class OldMisraGries(MisraGries):

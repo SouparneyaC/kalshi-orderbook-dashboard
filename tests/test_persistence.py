@@ -5,8 +5,8 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import persistence  # noqa: E402
-from persistence import TradeColumns  # noqa: E402
+from app.storage import persistence  # noqa: E402
+from app.storage.persistence import TradeColumns  # noqa: E402
 
 
 def sample(n, start=0):

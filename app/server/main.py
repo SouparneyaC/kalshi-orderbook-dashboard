@@ -12,12 +12,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from latency import gc_freeze_loop, install_gc_probe, loop_lag_probe, now_ms
-from persistence import get_conn, insert_trades_batch
-import market_state
-import broadcast
-import kalshi_feed
-import market_page
+from app.core.latency import gc_freeze_loop, install_gc_probe, loop_lag_probe, now_ms
+from app.storage.persistence import get_conn, insert_trades_batch
+from app.core import market_state
+from app.server import broadcast
+from app.kalshi import kalshi_feed
+from app.server import market_page
 
 
 @asynccontextmanager
@@ -55,7 +55,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def dashboard():
-    html_path = Path(__file__).parent / "dashboard.html"
+    html_path = Path(__file__).resolve().parent.parent / "dashboard" / "dashboard.html"
     return HTMLResponse(html_path.read_text())
 
 
@@ -70,7 +70,7 @@ async def market_page_html(ticker: str):
     """The full page for one market. Only markets we hold an order book for have one."""
     if ticker not in market_state.books:
         return HTMLResponse(NO_BOOK_PAGE.format(ticker=html_escape(ticker)), status_code=404)
-    return HTMLResponse((Path(__file__).parent / "market.html").read_text())
+    return HTMLResponse((Path(__file__).resolve().parent.parent / "dashboard" / "market.html").read_text())
 
 
 @app.get("/api/market/{ticker}/info")

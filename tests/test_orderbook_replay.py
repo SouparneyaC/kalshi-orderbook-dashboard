@@ -12,7 +12,7 @@ from decimal import Decimal
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from orderbook import OrderBook                      # noqa: E402
+from app.core.orderbook import OrderBook                      # noqa: E402
 from tests.legacy_orderbook import OrderBook as OldBook  # noqa: E402
 
 EXACT = {"implied_prob", "depth_imbalance", "depth_imbalance_near", "yes_levels", "no_levels", "ticker"}

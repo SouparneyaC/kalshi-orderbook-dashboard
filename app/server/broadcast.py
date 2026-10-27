@@ -6,8 +6,8 @@ import time
 
 import orjson
 
-from latency import now_ms, perf_ns, ns_to_ms
-import market_state
+from app.core.latency import now_ms, perf_ns, ns_to_ms
+from app.core import market_state
 
 # --- Browser clients ---
 browser_clients: set = set()   # BrowserClient objects (tests may add plain markers)

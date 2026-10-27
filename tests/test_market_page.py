@@ -12,10 +12,10 @@ from unittest import mock
 os.environ.setdefault("KALSHI_KEY_ID", "test")
 os.environ.setdefault("KALSHI_PRIVATE_KEY_PATH", "unused")
 
-import market_page
-import market_state
-import server
-from orderbook import OrderBook
+from app.server import market_page
+from app.core import market_state
+from app.server import main as server
+from app.core.orderbook import OrderBook
 
 T = "KXTEST-26-A"
 

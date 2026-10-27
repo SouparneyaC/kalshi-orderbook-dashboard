@@ -5,8 +5,8 @@ the queue when the window ends (trailing flush), with at most one flush schedule
 import asyncio
 import unittest
 
-import broadcast
-import market_state
+from app.server import broadcast
+from app.core import market_state
 
 
 class ThrottleTrailingFlushTest(unittest.IsolatedAsyncioTestCase):

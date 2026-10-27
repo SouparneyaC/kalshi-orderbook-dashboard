@@ -10,10 +10,10 @@ from pathlib import Path
 
 import duckdb
 
-DB_PATH = Path(__file__).parent / "trades.duckdb"
+DB_PATH = Path(__file__).resolve().parents[2] / "trades.duckdb"   # repo root
 
 _conn: duckdb.DuckDBPyConnection | None = None
-# One connection, used from several threads (server.py flushes via asyncio.to_thread).
+# One connection, used from several threads (the server flushes via asyncio.to_thread).
 # DuckDB 2.x refuses a busy connection instead of waiting, so every use takes this lock.
 _lock = threading.RLock()
 

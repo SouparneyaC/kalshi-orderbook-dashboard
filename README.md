@@ -42,7 +42,7 @@ Start the server:
 
 ```bash
 set -a; source .env; set +a
-venv/bin/uvicorn server:app --host 127.0.0.1 --port 8000
+venv/bin/uvicorn app.server.main:app --host 127.0.0.1 --port 8000
 ```
 
 Then open http://localhost:8000. Order books start filling within a minute or two, once there is enough trading to rank markets.
@@ -99,21 +99,28 @@ A t4g instance earns CPU credits and is slowed to a baseline of about 20% per vC
 ## Project Structure
 
 ```
-├── server.py          # FastAPI app: routes, browser WebSockets, startup
-├── kalshi_feed.py     # Kalshi WebSocket client, message handling, order book selection
-├── market_state.py    # In-memory market data and the payloads sent to browsers
-├── orderbook.py       # Order book for one market (integer prices and sizes)
-├── book_seq.py        # Detects skipped sequence numbers and requests fresh snapshots
-├── broadcast.py       # Home page updates, one sender per browser tab
-├── market_page.py     # Market page updates and Kalshi market details
-├── streaming.py       # Streaming sketches (heavy hitters, concentration, distinct count)
-├── latency.py         # Latency percentiles and garbage collector timing
-├── persistence.py     # DuckDB trade storage
-├── auth.py            # Kalshi request signing
-├── dashboard.html     # Home page
-├── market.html        # Market page
-├── deploy/            # Server setup script, systemd unit, Caddy config
-└── tests/             # Unit tests and the simulated Kalshi stream
+├── app/
+│   ├── server/
+│   │   ├── main.py            # FastAPI app: routes, browser WebSockets, startup
+│   │   ├── broadcast.py       # Home page updates, one sender per browser tab
+│   │   └── market_page.py     # Market page updates and Kalshi market details
+│   ├── kalshi/
+│   │   ├── kalshi_feed.py     # Kalshi WebSocket client, message handling, order book selection
+│   │   ├── book_seq.py        # Detects skipped sequence numbers and requests fresh snapshots
+│   │   └── auth.py            # Kalshi request signing
+│   ├── core/
+│   │   ├── market_state.py    # In-memory market data and the payloads sent to browsers
+│   │   ├── orderbook.py       # Order book for one market (integer prices and sizes)
+│   │   ├── streaming.py       # Streaming sketches (heavy hitters, concentration, distinct count)
+│   │   └── latency.py         # Latency percentiles and garbage collector timing
+│   ├── storage/
+│   │   └── persistence.py     # DuckDB trade storage (writes trades.duckdb in the repo root)
+│   └── dashboard/
+│       ├── dashboard.html     # Home page
+│       └── market.html        # Market page
+├── deploy/                    # Server setup script, systemd unit, Caddy config
+├── docs/                      # Screenshots
+└── tests/                     # Unit tests and the simulated Kalshi stream
 ```
 
 ## Notes

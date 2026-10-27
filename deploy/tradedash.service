@@ -9,7 +9,7 @@ Group=ubuntu
 WorkingDirectory=/opt/tradedash
 EnvironmentFile=/opt/tradedash/.env
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/opt/tradedash/venv/bin/uvicorn server:app --host 127.0.0.1 --port 8000
+ExecStart=/opt/tradedash/venv/bin/uvicorn app.server.main:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=5
 StandardOutput=journal

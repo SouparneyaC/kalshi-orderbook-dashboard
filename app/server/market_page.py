@@ -17,9 +17,9 @@ import time
 import urllib.parse
 import urllib.request
 
-from latency import now_ms
-import broadcast
-import market_state
+from app.core.latency import now_ms
+from app.server import broadcast
+from app.core import market_state
 
 # --- Live tabs ---
 watchers: dict[str, set] = {}          # ticker -> MarketClients looking at it

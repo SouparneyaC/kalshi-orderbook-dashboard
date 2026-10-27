@@ -11,8 +11,8 @@ import unittest
 os.environ.setdefault("KALSHI_KEY_ID", "test")
 os.environ.setdefault("KALSHI_PRIVATE_KEY_PATH", "unused")
 
-import broadcast
-import market_state
+from app.server import broadcast
+from app.core import market_state
 
 
 class FakeWS:

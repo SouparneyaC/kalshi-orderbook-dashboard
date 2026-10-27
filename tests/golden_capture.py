@@ -18,9 +18,9 @@ os.environ.setdefault("KALSHI_KEY_ID", "test")
 os.environ.setdefault("KALSHI_PRIVATE_KEY_PATH", "unused")
 random.seed(7)
 
-import kalshi_feed    # noqa: E402
-import market_state   # noqa: E402
-import persistence    # noqa: E402
+from app.kalshi import kalshi_feed    # noqa: E402
+from app.core import market_state   # noqa: E402
+from app.storage import persistence    # noqa: E402
 from tests.sim_stream import SimStream  # noqa: E402
 
 # Values that depend on wall-clock time or on hash functions we are allowed to change

@@ -7,8 +7,8 @@ import unittest
 os.environ.setdefault("KALSHI_KEY_ID", "test")
 os.environ.setdefault("KALSHI_PRIVATE_KEY_PATH", "unused")
 
-import kalshi_feed
-import market_state as ms
+from app.kalshi import kalshi_feed
+from app.core import market_state as ms
 
 
 def trade(ticker, yes_px, count, side="yes", tid=[0]):
