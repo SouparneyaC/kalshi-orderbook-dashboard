@@ -11,14 +11,14 @@ This project gives you a live view of Kalshi from a server you run yourself:
 - Full order books for as many markets as you configure (we run 400)
 - A page per market with the order book, a depth chart, its trades and Kalshi's market details
 - Latency figures for each step from Kalshi to the browser
-- A pipeline page (`/graph`) with the load on each step and the heavy-hitters summary
+- Pipeline and load page (`/graph`)
 
 Currently supported features:
 - Ticker, trade and order book channels from Kalshi's WebSocket API
 - Order book selection by recent dollar volume, re-checked every 10 seconds
 - Sequence-gap detection with automatic snapshot resync
-- An accuracy audit that compares each held order book with a snapshot from Kalshi, one book every few seconds
-- Per-minute latency histograms and counters saved to `metrics.duckdb`
+- Accuracy audit against Kalshi snapshots
+- Per-minute latency and load history
 - Optional trade storage in [DuckDB](https://duckdb.org)
 - Password protection through Caddy when deployed
 
@@ -140,7 +140,7 @@ A t4g instance earns CPU credits and is slowed to a baseline of about 20% per vC
 - The server is a single Python process: FastAPI on one asyncio event loop. It subscribes to Kalshi's ticker, trade and lifecycle channels for every open market and to order book depth for the selected markets, and sends each browser tab only what changed.
 - A quarter of the order book slots go to the top rows of the home table. The rest go to the markets with the most dollars traded in the last few minutes.
 - Order book messages from Kalshi carry a sequence number per subscription. A gap means a message was lost, and since Kalshi sends book changes as increments, the server re-requests snapshots of every book on that subscription.
-- The audit asks Kalshi for a fresh snapshot of one book and compares it with ours. Asking for a snapshot makes Kalshi skip a few updates that share the snapshot's clock value, so a difference can come from the check itself. Not every request gets a reply. Treat the audit as a smoke alarm, not a measure of accuracy.
+- The audit asks Kalshi for a fresh snapshot of one book and compares it with ours. Asking for a snapshot makes Kalshi skip a few updates that share the snapshot's clock value, so a difference can come from the check itself. Not every request gets a reply.
 - Saving trades is the most CPU-hungry part on a small instance. On the t4g.small the database writer fell behind during busy hours, so our deployment runs with `PERSIST_TRADES=0`.
 - Comments citing sections like "Drepper §6.2.1" refer to Ulrich Drepper, [What Every Programmer Should Know About Memory](https://www.akkadia.org/drepper/cpumemory.pdf) (2007), which guided the memory layout of the hot paths.
 - This project is not affiliated with Kalshi. Use of Kalshi's API is subject to Kalshi's terms.
