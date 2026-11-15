@@ -9,6 +9,7 @@ samples and reports p50 / p99 / p99.9, never averages, because traders feel the 
 
 import asyncio
 import gc
+import math
 import time
 from collections import deque
 
@@ -69,10 +70,83 @@ class StageStats:
         return self._snap
 
 
+SUB = 16   # histogram buckets per doubling: each is 2^(1/16) = 4.4% wide, so a value read back is within ±2.2%
+
+
+class MinuteHist:
+    """Every sample of one stage for one minute, in log buckets (metrics_store.py saves it).
+
+    The rolling window above holds the last 4096 samples, which is ~1.5 s for recv_to_hub and minutes
+    for send_to_render, so their p99s describe different periods. This counts EVERY sample of a fixed
+    minute, and minutes add up: an hour's histogram is the sum of its minutes' bucket counts.
+
+    Bucket k holds values in [2^(k/SUB), 2^((k+1)/SUB)) microseconds. Zero and negative samples (a
+    cross-machine stage like venue_to_recv can read below zero when the clocks disagree) are kept
+    separately instead of being dropped, so count always equals the number of samples recorded.
+    """
+    __slots__ = ("count", "sum", "min", "max", "pos", "neg", "zero")
+
+    def __init__(self):
+        self.count = 0
+        self.sum = 0.0
+        self.min = math.inf
+        self.max = -math.inf
+        self.pos: dict[int, int] = {}
+        self.neg: dict[int, int] = {}   # buckets of -ms, for negative samples
+        self.zero = 0
+
+    def add(self, ms: float):
+        self.count += 1
+        self.sum += ms
+        if ms < self.min:
+            self.min = ms
+        if ms > self.max:
+            self.max = ms
+        if ms > 0:
+            k = math.floor(math.log2(ms * 1000.0) * SUB)
+            self.pos[k] = self.pos.get(k, 0) + 1
+        elif ms < 0:
+            k = math.floor(math.log2(-ms * 1000.0) * SUB)
+            self.neg[k] = self.neg.get(k, 0) + 1
+        else:
+            self.zero += 1
+
+
+def bucket_mid_ms(k: int) -> float:
+    """Geometric middle of bucket k, in ms: the estimate with the smallest worst-case relative error."""
+    return 2.0 ** ((k + 0.5) / SUB) / 1000.0
+
+
+def hist_percentile(q: float, pos: dict, neg: dict, zero: int, lo: float, hi: float) -> float | None:
+    """Percentile q (0..1) from bucket counts. Clamped to the exact min/max, so p0 and p100 are exact."""
+    n = sum(pos.values()) + sum(neg.values()) + zero
+    if n == 0:
+        return None
+    rank = max(1, math.ceil(q * n))          # the rank-th smallest sample (nearest-rank definition)
+    if rank >= n:
+        return hi                            # the largest sample is known exactly
+    if rank == 1:
+        return lo                            # and so is the smallest
+    seen = 0
+    for k in sorted(neg, reverse=True):      # most negative first
+        seen += neg[k]
+        if seen >= rank:
+            return min(max(-bucket_mid_ms(k), lo), hi)
+    seen += zero
+    if seen >= rank:
+        return 0.0
+    for k in sorted(pos):
+        seen += pos[k]
+        if seen >= rank:
+            return min(max(bucket_mid_ms(k), lo), hi)
+    return hi
+
+
 class LatencyMonitor:
     def __init__(self):
         self.stages: dict[str, StageStats] = {}
         self.counters: dict[str, int] = {}
+        self.minute: dict[str, MinuteHist] = {}   # this minute's histograms; metrics_store swaps it out
         self._cached: dict | None = None
         self._cached_at = 0.0
 
@@ -81,6 +155,15 @@ class LatencyMonitor:
         if st is None:
             st = self.stages[stage] = StageStats()
         st.add(ms)
+        h = self.minute.get(stage)
+        if h is None:
+            h = self.minute[stage] = MinuteHist()
+        h.add(ms)
+
+    def take_minute(self) -> dict[str, "MinuteHist"]:
+        """Hand over this minute's histograms and start fresh ones. O(1): one dict swap."""
+        done, self.minute = self.minute, {}
+        return done
 
     def incr(self, name: str, by: int = 1):
         self.counters[name] = self.counters.get(name, 0) + by

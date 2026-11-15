@@ -82,6 +82,14 @@
     font-weight: 500;
   }
 
+  .header-link {
+    color: var(--blue);
+    text-decoration: none;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+  }
+  .header-link:hover { text-decoration: underline; }
+
   .feed-pill {
     margin-left: auto;
     font-family: 'IBM Plex Mono', monospace;
@@ -523,6 +531,7 @@
   <div class="header-stat"><span class="val" id="hdr-books">0</span> books</div>
   <div class="header-stat"><span class="val" id="hdr-distinct">0</span> distinct</div>
   <div class="header-stat"><span class="val" id="hdr-uptime">0m</span></div>
+  <a class="header-link" href="/graph" title="Data path and per-stage load">pipeline</a>
   <div class="feed-pill feed-dead" id="feed-pill">Kalshi &middot; Connecting</div>
 </div>
 

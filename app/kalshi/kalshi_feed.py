@@ -56,6 +56,7 @@ async def promote_markets(ws, msg_id_ref: list[int]):
     for ticker in to_remove:
         del market_state.books[ticker]
         market_state.book_seq.forget(ticker)
+        market_state.book_audit.forget(ticker)
         market_page.notify(ticker)      # an open market tab learns its book is gone
 
     # Add promoted markets
@@ -63,6 +64,7 @@ async def promote_markets(ws, msg_id_ref: list[int]):
     for ticker in to_add:
         market_state.books[ticker] = OrderBook()
         market_state.books[ticker].ticker = ticker
+        market_state.book_audit.forget(ticker)
 
     # Update the subscription if we have one
     if market_state.book_sub_sid is not None:
@@ -145,6 +147,7 @@ def handle_message(data: dict, recv_ns: int, recv_ms: int) -> bool:
         if channel == "orderbook_delta":
             market_state.book_sub_sid = sid
             market_state.book_seq.reset()
+            market_state.book_audit.reset()
         return False
 
     # --- Layer 1: Ticker updates ---
@@ -244,6 +247,15 @@ def handle_message(data: dict, recv_ns: int, recv_ms: int) -> bool:
         ticker = msg.get("market_ticker", "")
         if ticker not in market_state.books:
             market_state.books[ticker] = OrderBook()
+        audit = market_state.book_audit.on_snapshot(ticker, market_state.books[ticker], msg, recv_ms)
+        if audit is not None:
+            lat = market_state.latency
+            lat.incr("book_audits")
+            lat.incr("book_audit_levels", audit[2])
+            if audit[3]:
+                lat.incr("book_audits_wrong")
+                lat.incr("book_audit_levels_wrong", audit[3])
+                print(f"  [AUDIT] {ticker}: {audit[3]} of {audit[2]} levels wrong, worst {audit[4]} contracts")
         market_state.books[ticker].load_snapshot(msg, ticker=ticker)
         market_state.book_seq.snapshot_received(ticker)
         market_page.notify(ticker)
@@ -321,6 +333,21 @@ async def _request_book_snapshots(ws, msg_id_ref: list[int]):
     market_state.latency.incr("book_resync_requests")
 
 
+async def _request_book_audit(ws, msg_id_ref: list[int], now: int):
+    """Ask Kalshi for one book, to compare with ours when the reply arrives (book_audit.py)."""
+    sid = market_state.book_sub_sid
+    ticker, lost = market_state.book_audit.next_ticker(market_state.books, now)
+    if lost:
+        market_state.latency.incr("book_audits_lost", lost)
+    if sid is None or ticker is None:
+        return
+    await ws.send(json.dumps({
+        "id": msg_id_ref[0], "cmd": "update_subscription",
+        "params": {"sid": sid, "action": "get_snapshot", "market_tickers": [ticker]},
+    }))
+    msg_id_ref[0] += 1
+
+
 async def _book_subscription_check(ws, msg_id_ref: list[int]):
     """First time: create the orderbook subscription. After that: promote/demote."""
     if market_state.book_sub_sid is None and market_state.recent_dollars:
@@ -356,6 +383,7 @@ async def kalshi_stream():
             msg_id_ref = [msg_id]
             market_state.book_sub_sid = None
             market_state.book_seq.reset()
+            market_state.book_audit.reset()
 
             print("Connecting to Kalshi WebSocket...")
 
@@ -410,6 +438,8 @@ async def kalshi_stream():
                         cpu["promotion_check"] = cpu.get("promotion_check", 0) + perf_ns() - t0
                     if market_state.book_seq.pending:
                         await _request_book_snapshots(ws, msg_id_ref)
+                    if market_state.book_audit.due(recv_ms):
+                        await _request_book_audit(ws, msg_id_ref, recv_ms)
 
         except Exception as e:
             market_state.feed["connected"] = False

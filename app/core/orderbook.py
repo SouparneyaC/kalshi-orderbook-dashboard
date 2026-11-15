@@ -13,19 +13,19 @@ How the data is laid out:
   Integers are exact, like Decimal, but they are plain machine numbers, not objects
   to allocate, follow and compare digit by digit.
 
-  Each side is two parallel arrays kept in ascending price order:
-      px  = array('q', [3800, 3850, 3900])    ← prices, packed together in memory
-      qty = array('q', [ 500,  120, 4300])    ← quantity at the same index
-  array('q') stores raw 8-byte integers back to back (like a C++ std::vector<int64_t>),
-  so walking a side reads consecutive memory: the cheap, sequential pattern from
-  cpumemory §3.3.2, instead of hopping between hash-table slots and Decimal objects.
+  Each side is two parallel lists kept in ascending price order:
+      px  = [3800, 3850, 3900]    ← prices
+      qty = [ 500,  120, 4300]    ← quantity at the same index
+  An earlier version used array('q') (raw 8-byte integers back to back, like a C++ vector<int64_t>).
+  It now uses plain lists: reading an array('q') element builds a new Python int
+  every time, which made bisect ~2x slower in a local benchmark.
+  A list already holds the int objects, so reads are just pointer loads.
 
   Because the arrays are sorted, the best bid is simply the LAST element: no search.
   Running totals are updated on every change, and summary() is cached until the
   book changes, so readers never rescan the book.
 """
 
-from array import array
 from bisect import bisect_left
 from decimal import Decimal
 
@@ -76,8 +76,8 @@ class _Side:
     __slots__ = ("px", "qty", "total")
 
     def __init__(self):
-        self.px = array("q")
-        self.qty = array("q")
+        self.px: list[int] = []
+        self.qty: list[int] = []
         self.total = 0          # sum of qty, kept up to date on every change
 
     def load(self, pairs):
@@ -86,8 +86,8 @@ class _Side:
         for price, qty in pairs:
             levels[to_ticks(price)] = to_hundredths(qty)   # later duplicates win, like the old dict
         prices = sorted(levels)
-        self.px = array("q", prices)
-        self.qty = array("q", [levels[p] for p in prices])
+        self.px = prices
+        self.qty = [levels[p] for p in prices]
         self.total = sum(self.qty)
 
     def add(self, p: int, d: int):

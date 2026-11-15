@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline &amp; Load</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #12141a;
+    --surface: #1a1d26;
+    --surface-raised: #1f2230;
+    --border: #252936;
+    --border-subtle: #1e2130;
+    --text: #c9cdd6;
+    --text-bright: #e8eaf0;
+    --muted: #6b7280;
+    --dimmed: #454b5a;
+    --green: #22c55e;
+    --green-dim: rgba(34,197,94,0.12);
+    --red: #ef4444;
+    --red-dim: rgba(239,68,68,0.12);
+    --amber: #f59e0b;
+    --amber-dim: rgba(245,158,11,0.10);
+    --blue: #3b82f6;
+    --blue-dim: rgba(59,130,246,0.10);
+
+    /* Chart series. Validated for this surface (#1a1d26) with the dataviz six checks:
+       lightness band, chroma floor, CVD separation (dE 30.2 protan), normal-vision dE 34.2,
+       contrast >= 3:1. s1 is the dashboard's own blue; s2 is amber-600, NOT the --amber token
+       (#f59e0b sits above the dark-mode lightness band and failed the band check). */
+    --s1: #3b82f6;
+    --s2: #d97706;
+    --grid: #252936;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+    min-height: 100vh;
+  }
+
+  /* ---- Header (same shell as the dashboard) ---- */
+  .header {
+    position: sticky; top: 0; z-index: 100; height: 40px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px; padding: 0 16px;
+    font-variant-numeric: tabular-nums;
+  }
+  .header-title { font-weight: 600; font-size: 13px; color: var(--text-bright); letter-spacing: -0.01em; }
+  .header-sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+  .header-stat {
+    display: flex; align-items: center; gap: 5px; color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; white-space: nowrap;
+  }
+  .header-stat .val { color: var(--text); font-weight: 500; }
+  .back { color: var(--blue); text-decoration: none; font-size: 11px; }
+  .back:hover { text-decoration: underline; }
+  .feed-pill {
+    margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+    padding: 2px 8px; border-radius: 3px; white-space: nowrap;
+  }
+  .feed-live    { background: var(--green-dim); color: var(--green); }
+  .feed-lagging { background: var(--amber-dim); color: var(--amber); }
+  .feed-dead    { background: var(--red-dim);   color: var(--red); }
+
+  /* ---- Layout ---- */
+  .wrap { padding: 16px; max-width: 1600px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+  }
+  .card-head {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 10px 14px; border-bottom: 1px solid var(--border-subtle);
+  }
+  .card-head .title { font-size: 12px; font-weight: 600; color: var(--text-bright); }
+  .card-head .sub { font-size: 10px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+  .card-body { padding: 14px; }
+
+  /* ---- KPI row ---- */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(146px, 1fr)); gap: 10px; }
+  .tile {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+    padding: 10px 12px 8px;
+  }
+  .tile .label {
+    font-size: 10px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.04em; white-space: nowrap;
+  }
+  .tile .value {
+    /* Proportional figures on standalone values; tabular-nums is for aligned columns only. */
+    font-size: 22px; font-weight: 600; color: var(--text-bright); margin-top: 2px;
+  }
+  .tile .value .unit { font-size: 11px; font-weight: 400; color: var(--muted); margin-left: 3px; }
+  .tile .spark { margin-top: 4px; height: 26px; width: 100%; display: block; }
+
+  /* ---- Pipeline ---- */
+  .pipe-scroll { overflow-x: auto; }
+  .pipe-legend {
+    display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+    padding: 0 14px 12px; font-size: 10px; color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .swatch.dot { border-radius: 50%; }
+
+  /* ---- Charts ---- */
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; }
+  .chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .chart-title { font-size: 11px; font-weight: 600; color: var(--text-bright); }
+  .chart-cite { font-size: 10px; color: var(--dimmed); font-family: 'IBM Plex Mono', monospace; }
+  .chart-now { font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--text); }
+  .plot { width: 100%; display: block; }
+
+  .legend { display: flex; gap: 14px; margin-bottom: 8px; font-size: 10px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+
+  /* ---- Heavy hitters ---- */
+  .hh-row { display: grid; grid-template-columns: 1fr 52px; gap: 8px; align-items: center; margin-bottom: 5px; }
+  .hh-name { font-size: 11px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hh-bar-track { height: 4px; background: var(--border-subtle); border-radius: 2px; margin-top: 3px; }
+  .hh-bar { height: 4px; background: var(--s1); border-radius: 2px; }
+  .hh-val { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ---- Table view (accessibility: every charted number is also readable) ---- */
+  details.tableview { font-size: 11px; }
+  details.tableview summary { cursor: pointer; color: var(--blue); padding: 10px 14px; font-size: 11px; }
+  table { width: 100%; border-collapse: collapse; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  th, td { text-align: right; padding: 4px 10px; border-bottom: 1px solid var(--border-subtle); font-variant-numeric: tabular-nums; }
+  th { color: var(--muted); font-weight: 500; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  td.over { color: var(--amber); }
+
+  /* ---- Tooltip ---- */
+  #tip {
+    position: fixed; z-index: 500; pointer-events: none; opacity: 0;
+    background: var(--surface-raised); border: 1px solid var(--border);
+    border-radius: 4px; padding: 7px 9px; font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; color: var(--text); box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    max-width: 280px; transition: opacity 0.08s;
+  }
+  #tip b { color: var(--text-bright); font-weight: 600; }
+  #tip .dim { color: var(--muted); }
+
+  .note { font-size: 10px; color: var(--dimmed); padding: 0 14px 12px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="header-title">Pipeline &amp; Load</span>
+  <a class="back" href="/">&larr; terminal</a>
+  <div class="header-sep"></div>
+  <div class="header-stat"><span class="val" id="hdr-uptime">0m</span> up</div>
+  <div class="header-stat"><span class="val" id="hdr-clients">0</span> clients</div>
+  <div class="header-stat"><span class="val" id="hdr-books">0</span> books</div>
+  <div class="header-stat"><span class="val" id="hdr-window">0s</span> window</div>
+  <span class="feed-pill feed-dead" id="feed-pill">connecting</span>
+</div>
+
+<div class="wrap">
+
+  <!-- KPI row: the headline numbers are numbers, not one-bar charts. -->
+  <div class="kpis" id="kpis"></div>
+
+  <!-- The network: the data path as a graph, each hop carrying its load. -->
+  <div class="card">
+    <div class="card-head">
+      <span class="title">Data path</span>
+      <span class="sub">venue &rarr; browser &middot; edge width = messages/s &middot; edge label = p99 ms</span>
+    </div>
+    <div class="pipe-scroll"><svg id="pipe" class="plot" role="img"
+      aria-label="The data path from Kalshi to the browser, with per-hop load and p99 latency"></svg></div>
+    <div class="pipe-legend">
+      <span><span class="swatch" style="background:var(--s1)"></span>within budget</span>
+      <span><span class="swatch" style="background:var(--amber)"></span>&#9651; p99 over budget</span>
+      <span><span class="swatch" style="background:var(--red)"></span>&#9888; p99 over 3&times; budget</span>
+      <span class="dim">hover a node or hop for its full percentiles</span>
+    </div>
+    <p class="note">
+      venue&rarr;recv is the only hop measured across two machines (Kalshi's own timestamp vs our socket read),
+      so it carries clock skew; every other hop is one process' monotonic clock.
+    </p>
+  </div>
+
+  <!-- Chapter 6: the three sketches in streaming.py, over time. -->
+  <div class="card">
+    <div class="card-head">
+      <span class="title">Stream load, by sketch</span>
+      <span class="sub">Blum/Hopcroft/Kannan ch. 6 &middot; streaming.py</span>
+    </div>
+    <div class="card-body charts">
+      <div>
+        <div class="chart-head">
+          <span class="chart-title">Distinct active markets</span>
+          <span class="chart-cite">&sect;6.2.1</span>
+        </div>
+        <svg id="c-distinct" class="plot"></svg>
+      </div>
+      <div>
+        <div class="chart-head">
+          <span class="chart-title">Load concentration &nbsp;F&#8322;/(&Sigma;f)&#178;</span>
+          <span class="chart-cite">&sect;6.2.4</span>
+        </div>
+        <svg id="c-conc" class="plot"></svg>
+      </div>
+      <div>
+        <div class="chart-head">
+          <span class="chart-title">Messages/s by channel</span>
+          <span class="chart-cite">feed</span>
+        </div>
+        <svg id="c-msgs" class="plot"></svg>
+      </div>
+    </div>
+    <div class="card-body" style="padding-top:0">
+      <div class="chart-head">
+        <span class="chart-title">Heavy hitters &mdash; share of the sketch's tracked load</span>
+        <span class="chart-cite">&sect;6.2.3 Misra-Gries, K=<span id="hh-k">?</span></span>
+      </div>
+      <div id="hh"></div>
+    </div>
+    <p class="note" id="sketch-note"></p>
+  </div>
+
+  <!-- Per-stage latency: two measures, same unit, one axis. -->
+  <div class="card">
+    <div class="card-head">
+      <span class="title">Stage latency</span>
+      <span class="sub">rolling window of 4096 samples per stage &middot; ms, log axis · p50 → p99</span>
+    </div>
+    <div class="card-body">
+      <div class="legend">
+        <span><span class="swatch dot" style="background:var(--s1)"></span>p50</span>
+        <span><span class="swatch dot" style="background:var(--s2)"></span>p99</span>
+        <span style="color:var(--dimmed)">the gap between them is the tail &middot; one ringed dot = no tail</span>
+      </div>
+      <svg id="c-stages" class="plot"></svg>
+    </div>
+  </div>
+
+  <div class="card">
+    <details class="tableview">
+      <summary>Table view &mdash; every stage and sketch value as text</summary>
+      <div id="tbl"></div>
+    </details>
+  </div>
+
+</div>
+
+<div id="tip"></div>
+
+<script>
+// ---------------------------------------------------------------------------
+// /graph: the data path as a graph, with the load on each hop, plus the
+// chapter-6 stream sketches over time.
+//
+// The server keeps no history: it hands out one snapshot of counters and
+// percentiles (/api/graph, cheap, everything is already maintained by the hot
+// path). This page differences consecutive snapshots into per-second rates and
+// keeps its own ring of samples.
+// ---------------------------------------------------------------------------
+
+const POLL_MS = 1000;
+const HIST = 180;               // samples kept: 3 minutes at 1 Hz
+
+const SVG = 'http://www.w3.org/2000/svg';
+const tip = document.getElementById('tip');
+
+// Per-hop p99 budgets (ms). Over budget -> amber, over 3x -> red. These are the
+// numbers the roadmap treats as "a trader would feel it", not arbitrary limits.
+const BUDGET = {
+  // venue_to_recv.ticker has no budget: Kalshi's ticker ts_ms reads 0-1 s behind on live data
+  // (p50 ~460 ms) while trade/book on the same socket read ~7 ms, so it measures the stamp, not the hop.
+  'venue_to_recv.trade': 50, 'venue_to_recv.book': 50,
+  // loop_lag 30: live p99 sits at 17-24 ms when healthy (round 05/06 measurements).
+  recv_to_hub: 2, build: 5, queue_wait: 20, serialize_send: 5, send_to_render: 150,
+  recv_to_send: 200, loop_lag: 30, gc_pause: 20, db_flush: 50,
+};
+
+let prev = null;                 // previous snapshot, for differencing counters
+const hist = {                   // parallel arrays, newest last
+  t: [], msgs: [], trades: [], books: [], tickers: [], payloads: [],
+  distinct: [], conc: [], e2e: [], queue: [], drops: [],
+};
+
+function push(key, v) {
+  const a = hist[key];
+  a.push(v);
+  if (a.length > HIST) a.shift();
+}
+
+// ---- small helpers -------------------------------------------------------
+
+function fmtNum(v, digits) {
+  if (v === null || v === undefined || Number.isNaN(v)) return '--';
+  if (Math.abs(v) >= 1e12) return (v / 1e12).toFixed(1) + 'T';
+  if (Math.abs(v) >= 1e9) return (v / 1e9).toFixed(1) + 'G';
+  if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+  if (Math.abs(v) >= 1e4) return (v / 1e3).toFixed(1) + 'k';
+  if (digits !== undefined) return v.toFixed(digits);
+  if (Math.abs(v) >= 100) return Math.round(v).toString();
+  if (Math.abs(v) >= 10) return v.toFixed(1);
+  return v.toFixed(2);
+}
+function fmtMs(v) { return v === null || v === undefined ? '--' : fmtNum(v) + ' ms'; }
+function fmtDur(s) {
+  if (!s) return '0m';
+  if (s < 180) return Math.round(s) + 's';   // the ring is 180 s, so crosshair times stay in seconds
+  if (s < 5400) return Math.round(s / 60) + 'm';
+  return (s / 3600).toFixed(1) + 'h';
+}
+function el(tag, attrs, text) {
+  const n = document.createElementNS(SVG, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+function showTip(evt, html) {
+  tip.innerHTML = html;
+  tip.style.opacity = 1;
+  const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = evt.clientX + pad, y = evt.clientY + pad;
+  if (x + w > window.innerWidth - 8) x = evt.clientX - w - pad;
+  if (y + h > window.innerHeight - 8) y = evt.clientY - h - pad;
+  tip.style.left = x + 'px';
+  tip.style.top = y + 'px';
+}
+function hideTip() { tip.style.opacity = 0; }
+
+// Status of a stage against its budget. Never colour alone: each state ships a glyph + word.
+function statusOf(stage, p99) {
+  const b = BUDGET[stage];
+  if (b === undefined || p99 === null || p99 === undefined) return { key: 'ok', colour: 'var(--s1)', glyph: '', word: '' };
+  if (p99 > b * 3) return { key: 'bad',  colour: 'var(--red)',   glyph: '⚠', word: 'over 3× budget' };
+  if (p99 > b)     return { key: 'warn', colour: 'var(--amber)', glyph: '△', word: 'over budget' };
+  return { key: 'ok', colour: 'var(--s1)', glyph: '', word: 'within budget' };
+}
+
+function stagePct(d, name) {
+  const s = d.stages && d.stages[name];
+  return s || null;
+}
+// Highest p99 among several channel variants of the same hop (we show the worst one).
+function worstStage(d, names) {
+  let best = null, bestName = null;
+  for (const n of names) {
+    const s = stagePct(d, n);
+    if (s && (best === null || s.p99 > best.p99)) { best = s; bestName = n; }
+  }
+  return { stage: best, name: bestName };
+}
+
+// ---- sparkline (stat tiles) ---------------------------------------------
+
+function sparkline(svg, series, colour) {
+  const w = svg.clientWidth, h = 26;
+  if (!w) return;            // not laid out yet: the next poll draws it at the right width
+  clear(svg);
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('height', h);
+  if (series.length < 2) return;
+  const max = Math.max(...series), min = Math.min(...series);
+  const span = max - min || 1;
+  const x = i => (i / (series.length - 1)) * w;
+  const y = v => h - 2 - ((v - min) / span) * (h - 4);
+  let d = '';
+  series.forEach((v, i) => { d += (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1); });
+  svg.appendChild(el('path', { d, fill: 'none', stroke: colour, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+}
+
+// ---- time-series line chart (one series, crosshair + tooltip) -----------
+
+function lineChart(svg, series, opts) {
+  const o = Object.assign({ colour: 'var(--s1)', fmt: v => fmtNum(v), yMin: null, yMax: null, label: '' }, opts);
+  const w = svg.parentElement.clientWidth || 360;
+  const plotH = 110, axisH = 18, h = plotH + axisH;
+  const padL = 44, padR = 46, padT = 8, padB = axisH;
+  clear(svg);
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('height', h);
+
+  const innerW = w - padL - padR, innerH = plotH - padT;
+  if (series.length < 2) {
+    svg.appendChild(el('text', { x: w / 2, y: h / 2, fill: 'var(--dimmed)', 'font-size': 10, 'text-anchor': 'middle', 'font-family': 'IBM Plex Mono, monospace' }, 'collecting…'));
+    return;
+  }
+  let lo = o.yMin !== null ? o.yMin : Math.min(...series);
+  let hi = o.yMax !== null ? o.yMax : Math.max(...series);
+  if (hi === lo) { hi = lo + 1; }
+  else { const pad = (hi - lo) * 0.12; hi += pad; if (o.yMin === null) lo = Math.max(0, lo - pad); }
+  // A series that barely moves (distinct markets drifting 146 -> 147) would otherwise be drawn
+  // across the full height and labelled with three rounded-identical ticks.
+  if (o.minSpan && hi - lo < o.minSpan) {
+    const mid = (hi + lo) / 2, half = o.minSpan / 2;
+    lo = o.yMin !== null ? o.yMin : Math.max(o.allowNegative ? -Infinity : 0, mid - half);
+    hi = lo + o.minSpan;
+  }
+
+  const X = i => padL + (i / (series.length - 1)) * innerW;
+  const Y = v => padT + innerH - ((v - lo) / (hi - lo)) * innerH;
+
+  // Recessive solid hairline grid (never dashed) + y labels.
+  let lastTick = null;
+  for (let g = 0; g <= 2; g++) {
+    const v = lo + (hi - lo) * (g / 2), y = Y(v), txt = o.fmt(v);
+    svg.appendChild(el('line', { x1: padL, y1: y, x2: padL + innerW, y2: y, stroke: 'var(--grid)', 'stroke-width': 1 }));
+    if (txt !== lastTick) {   // never print the same rounded label twice
+      svg.appendChild(el('text', { x: padL - 6, y: y + 3, fill: 'var(--muted)', 'font-size': 9, 'text-anchor': 'end', 'font-family': 'IBM Plex Mono, monospace' }, txt));
+      lastTick = txt;
+    }
+  }
+  // x axis band: oldest -> now
+  svg.appendChild(el('text', { x: padL, y: plotH + 12, fill: 'var(--muted)', 'font-size': 9, 'font-family': 'IBM Plex Mono, monospace' }, '-' + fmtDur(series.length - 1)));
+  svg.appendChild(el('text', { x: padL + innerW, y: plotH + 12, fill: 'var(--muted)', 'font-size': 9, 'text-anchor': 'end', 'font-family': 'IBM Plex Mono, monospace' }, 'now'));
+
+  let d = '';
+  series.forEach((v, i) => { d += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); });
+  svg.appendChild(el('path', { d, fill: 'none', stroke: o.colour, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+
+  // One selective direct label: the endpoint. Never a number on every point.
+  const last = series[series.length - 1];
+  svg.appendChild(el('circle', { cx: X(series.length - 1), cy: Y(last), r: 3.5, fill: o.colour, stroke: 'var(--surface)', 'stroke-width': 2 }));
+  svg.appendChild(el('text', { x: X(series.length - 1) + 8, y: Y(last) + 3, fill: 'var(--text-bright)', 'font-size': 10, 'font-family': 'IBM Plex Mono, monospace' }, o.fmt(last)));
+
+  // Crosshair layer.
+  const cross = el('line', { x1: 0, y1: padT, x2: 0, y2: plotH, stroke: 'var(--dimmed)', 'stroke-width': 1, opacity: 0 });
+  const dot = el('circle', { r: 3.5, fill: o.colour, stroke: 'var(--surface)', 'stroke-width': 2, opacity: 0 });
+  svg.appendChild(cross); svg.appendChild(dot);
+  const hit = el('rect', { x: padL, y: 0, width: innerW, height: plotH, fill: 'transparent' });
+  hit.style.cursor = 'crosshair';
+  hit.addEventListener('mousemove', e => {
+    const box = svg.getBoundingClientRect();
+    const scale = w / box.width;
+    const px = (e.clientX - box.left) * scale;
+    const i = Math.max(0, Math.min(series.length - 1, Math.round(((px - padL) / innerW) * (series.length - 1))));
+    cross.setAttribute('x1', X(i)); cross.setAttribute('x2', X(i)); cross.setAttribute('opacity', 1);
+    dot.setAttribute('cx', X(i)); dot.setAttribute('cy', Y(series[i])); dot.setAttribute('opacity', 1);
+    const ago = series.length - 1 - i;
+    showTip(e, `<b>${o.fmt(series[i])}</b> ${o.label}<br><span class="dim">${ago ? fmtDur(ago) + ' ago' : 'now'}</span>`);
+  });
+  hit.addEventListener('mouseleave', () => { cross.setAttribute('opacity', 0); dot.setAttribute('opacity', 0); hideTip(); });
+  svg.appendChild(hit);
+}
+
+// ---- the data path graph -------------------------------------------------
+
+function renderPipe(d) {
+  const svg = document.getElementById('pipe');
+  const rate = k => {
+    const a = hist[k];
+    return a.length ? a[a.length - 1] : 0;
+  };
+  const msgRate = rate('msgs'), payloadRate = rate('payloads');
+
+  const venue = worstStage(d, ['venue_to_recv.trade', 'venue_to_recv.book']);
+  const nodes = [
+    { id: 'venue',  name: 'Kalshi venue', sub: 'off-machine', metric: fmtNum(msgRate) + ' msg/s',
+      detail: [['feed', d.feed.connected ? 'connected' : 'DOWN'], ['msgs total', fmtNum(d.counters.msgs)],
+               ['last msg age', fmtMs(d.feed.last_msg_age_ms)]] },
+    { id: 'recv',   name: 'recv', sub: 'socket read + decode', metric: fmtNum(msgRate) + ' msg/s',
+      stage: 'recv_to_hub',
+      detail: [['trades', fmtNum(d.counters.trade_count)], ['book deltas', fmtNum(d.counters.book_deltas)],
+               ['ticker updates', fmtNum(d.counters.ticker_updates)], ['deduped', fmtNum(d.counters.trades_deduped || 0)],
+               ['dropped', fmtNum(d.counters.trades_dropped || 0)]] },
+    { id: 'hub',    name: 'hub', sub: 'market state + sketches', metric: fmtNum(d.sizes.tickers) + ' mkts',
+      detail: [['books', d.sizes.books], ['dirty markets', d.sizes.dirty_markets],
+               ['book summary cpu', (d.cpu_ms.book_summary || 0) + ' ms total'],
+               ['distinct (§6.2.1)', fmtNum(d.sketches.distinct_active)]] },
+    { id: 'build',  name: 'payload build', sub: 'delta + orjson', metric: fmtNum(payloadRate) + ' payload/s',
+      stage: 'build',
+      detail: [['builds', fmtNum((stagePct(d, 'build') || {}).total)],
+               ['build cpu', (d.cpu_ms.payload_build || 0) + ' ms total']] },
+    { id: 'queue',  name: 'queue', sub: 'asyncio.Queue', metric: d.sizes.queue + ' / ' + d.sizes.queue_max,
+      stage: 'queue_wait',
+      detail: [['depth now', d.sizes.queue + ' of ' + d.sizes.queue_max],
+               ['client resyncs', fmtNum(d.counters.client_resyncs || 0)]] },
+    { id: 'send',   name: 'send', sub: 'per-client WS', metric: d.sizes.clients + ' client' + (d.sizes.clients === 1 ? '' : 's'),
+      stage: 'serialize_send',
+      detail: [['browser clients', d.sizes.clients], ['market tabs', d.sizes.market_tabs],
+               ['send timeouts', fmtNum(d.counters.client_send_timeouts || 0)]] },
+    { id: 'render', name: 'browser', sub: 'paint + ack', metric: fmtMs((stagePct(d, 'send_to_render') || {}).p99) + ' p99',
+      stage: 'send_to_render', detail: [] },
+  ];
+  const edges = [
+    { from: 0, to: 1, stage: venue.name || 'venue_to_recv.trade', load: msgRate, note: 'wall clock, two machines' },
+    { from: 1, to: 2, stage: 'recv_to_hub', load: msgRate },
+    { from: 2, to: 3, stage: 'build', load: payloadRate },
+    { from: 3, to: 4, stage: 'queue_wait', load: payloadRate },
+    { from: 4, to: 5, stage: 'serialize_send', load: payloadRate },
+    { from: 5, to: 6, stage: 'send_to_render', load: payloadRate * Math.max(1, d.sizes.clients) },
+  ];
+
+  const nw = 132, nh = 62, gap = 58, padX = 14, padY = 34;
+  const w = padX * 2 + nodes.length * nw + (nodes.length - 1) * gap;
+  const h = padY + nh + 54;
+  clear(svg);
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('height', h);
+  svg.style.minWidth = w + 'px';
+
+  const nx = i => padX + i * (nw + gap);
+  const maxLoad = Math.max(1, ...edges.map(e => e.load));
+
+  // Edges first, so node cards sit on top of them.
+  for (const e of edges) {
+    const s = stagePct(d, e.stage);
+    const st = statusOf(e.stage, s ? s.p99 : null);
+    const x1 = nx(e.from) + nw, x2 = nx(e.to), y = padY + nh / 2;
+    // Width encodes load (sqrt so a 100x rate is not a 100x-thick line).
+    const sw = 1.5 + 6 * Math.sqrt(e.load / maxLoad);
+    const g = el('g', {});
+    g.appendChild(el('line', { x1, y1: y, x2: x2 - 7, y2: y, stroke: st.colour, 'stroke-width': sw.toFixed(2), opacity: 0.75, 'stroke-linecap': 'round' }));
+    g.appendChild(el('path', { d: `M${x2 - 7} ${y - 4.5}L${x2} ${y}L${x2 - 7} ${y + 4.5}Z`, fill: st.colour, opacity: 0.75 }));
+    const mid = (x1 + x2) / 2;
+    g.appendChild(el('text', { x: mid, y: y - 8 - sw / 2, fill: st.key === 'ok' ? 'var(--text)' : st.colour, 'font-size': 10, 'text-anchor': 'middle', 'font-family': 'IBM Plex Mono, monospace' },
+      (st.glyph ? st.glyph + ' ' : '') + (s ? fmtNum(s.p99) : '--')));
+    g.appendChild(el('text', { x: mid, y: y + 14 + sw / 2, fill: 'var(--dimmed)', 'font-size': 9, 'text-anchor': 'middle', 'font-family': 'IBM Plex Mono, monospace' }, 'p99 ms'));
+    g.style.cursor = 'help';
+    const rows = s
+      ? `p50 ${fmtMs(s.p50)}<br>p99 ${fmtMs(s.p99)}<br>p99.9 ${fmtMs(s.p999)}<br>max ${fmtMs(s.max)}<br><span class="dim">${fmtNum(s.n)} samples in window, ${fmtNum(s.total)} total</span>`
+      : '<span class="dim">no samples yet</span>';
+    const budget = BUDGET[e.stage] !== undefined ? `<br><span class="dim">budget ${BUDGET[e.stage]} ms p99, ${st.word}</span>` : '';
+    g.addEventListener('mousemove', ev => showTip(ev, `<b>${e.stage}</b><br>${fmtNum(e.load)} /s<br>${rows}${budget}${e.note ? '<br><span class="dim">' + e.note + '</span>' : ''}`));
+    g.addEventListener('mouseleave', hideTip);
+    svg.appendChild(g);
+  }
+
+  nodes.forEach((n, i) => {
+    const s = n.stage ? stagePct(d, n.stage) : null;
+    const st = statusOf(n.stage, s ? s.p99 : null);
+    const x = nx(i), y = padY;
+    const g = el('g', {});
+    g.appendChild(el('rect', { x, y, width: nw, height: nh, rx: 4, fill: 'var(--surface-raised)',
+      stroke: st.key === 'ok' ? 'var(--border)' : st.colour, 'stroke-width': st.key === 'ok' ? 1 : 1.5 }));
+    g.appendChild(el('text', { x: x + 10, y: y + 19, fill: 'var(--text-bright)', 'font-size': 11, 'font-weight': 600 }, n.name));
+    g.appendChild(el('text', { x: x + 10, y: y + 33, fill: 'var(--muted)', 'font-size': 9 }, n.sub));
+    g.appendChild(el('text', { x: x + 10, y: y + 51, fill: 'var(--text)', 'font-size': 11, 'font-family': 'IBM Plex Mono, monospace' }, n.metric));
+    if (st.glyph) g.appendChild(el('text', { x: x + nw - 10, y: y + 19, fill: st.colour, 'font-size': 11, 'text-anchor': 'end' }, st.glyph));
+    g.style.cursor = 'help';
+    const detail = n.detail.map(([k, v]) => `<span class="dim">${k}</span> ${v}`).join('<br>');
+    g.addEventListener('mousemove', ev => showTip(ev, `<b>${n.name}</b><br>${detail || '<span class="dim">n/a</span>'}` +
+      (s ? `<br><span class="dim">${n.stage}</span> p50 ${fmtMs(s.p50)} · p99 ${fmtMs(s.p99)}` : '')));
+    g.addEventListener('mouseleave', hideTip);
+    svg.appendChild(g);
+  });
+}
+
+// ---- per-stage latency: p50 -> p99 dumbbell on one log ms axis ---------
+
+function renderStages(d) {
+  const svg = document.getElementById('c-stages');
+  const names = Object.keys(d.stages).filter(n => d.stages[n]).sort((a, b) => d.stages[b].p99 - d.stages[a].p99);
+  const w = svg.parentElement.clientWidth || 700;
+  const rowH = 22, padL = 150, padR = 74, padT = 10, axisH = 20;
+  const h = padT + names.length * rowH + axisH;
+  clear(svg);
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('height', h);
+  if (!names.length) return;
+
+  // Log axis: these stages span microseconds to hundreds of ms, and a linear axis flattens every
+  // fast one to nothing. Bars would be dishonest on a log scale (no meaningful zero), so each
+  // stage is a dumbbell instead: where p50 sits, where p99 sits, and how far apart they are.
+  const innerW = w - padL - padR;
+  const hi = Math.max(1, ...names.map(n => d.stages[n].p99)) * 1.6;
+  const lo = Math.min(0.01, ...names.map(n => Math.max(0.001, d.stages[n].p50)));
+  const X = v => padL + (Math.log10(Math.max(lo, Math.min(hi, v || lo)) / lo) / Math.log10(hi / lo)) * innerW;
+
+  const ticks = [0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000].filter(t => t >= lo && t <= hi);
+  for (const t of ticks) {
+    svg.appendChild(el('line', { x1: X(t), y1: padT - 4, x2: X(t), y2: padT + names.length * rowH - 4, stroke: 'var(--grid)', 'stroke-width': 1 }));
+    svg.appendChild(el('text', { x: X(t), y: h - 6, fill: 'var(--muted)', 'font-size': 9, 'text-anchor': 'middle', 'font-family': 'IBM Plex Mono, monospace' }, t < 1 ? t.toString() : fmtNum(t, 0)));
+  }
+  svg.appendChild(el('text', { x: padL + innerW / 2, y: h - 6 + 0, fill: 'transparent', 'font-size': 1 }, ''));
+
+  names.forEach((n, i) => {
+    const s = d.stages[n], y = padT + i * rowH + 6;
+    const st = statusOf(n, s.p99);
+    const g = el('g', {});
+    g.appendChild(el('text', { x: padL - 10, y: y + 3, fill: 'var(--text)', 'font-size': 10, 'text-anchor': 'end', 'font-family': 'IBM Plex Mono, monospace' }, n));
+    // Thin connector, then the two markers; the p99 marker carries a 2px surface ring so it
+    // stays readable where the two land on top of each other.
+    if (X(s.p99) - X(s.p50) < 3) {
+      // p50 and p99 land on the same spot (a stage with no tail, or too few samples to have one).
+      // One marker in both hues, rather than one dot silently hiding the other.
+      g.appendChild(el('circle', { cx: X(s.p99), cy: y, r: 4, fill: 'var(--s1)', stroke: 'var(--s2)', 'stroke-width': 2.5 }));
+    } else {
+      g.appendChild(el('line', { x1: X(s.p50), y1: y, x2: X(s.p99), y2: y, stroke: 'var(--dimmed)', 'stroke-width': 2, 'stroke-linecap': 'round' }));
+      g.appendChild(el('circle', { cx: X(s.p50), cy: y, r: 4, fill: 'var(--s1)', stroke: 'var(--surface)', 'stroke-width': 2 }));
+      g.appendChild(el('circle', { cx: X(s.p99), cy: y, r: 4, fill: 'var(--s2)', stroke: 'var(--surface)', 'stroke-width': 2 }));
+    }
+    // One selective label per row: the tail, which is the number that matters here.
+    g.appendChild(el('text', { x: X(s.p99) + 10, y: y + 3, fill: st.key === 'ok' ? 'var(--muted)' : st.colour, 'font-size': 10, 'font-family': 'IBM Plex Mono, monospace' },
+      (st.glyph ? st.glyph + ' ' : '') + fmtNum(s.p99)));
+    const hit = el('rect', { x: padL, y: y - rowH / 2, width: innerW + padR - 10, height: rowH, fill: 'transparent' });
+    hit.style.cursor = 'pointer';
+    hit.addEventListener('mousemove', ev => showTip(ev, `<b>${n}</b><br>p50 ${fmtMs(s.p50)}<br>p99 ${fmtMs(s.p99)}<br>p99.9 ${fmtMs(s.p999)}<br>max ${fmtMs(s.max)}<br><span class="dim">${fmtNum(s.n, 0)} samples in window, ${fmtNum(s.total, 0)} total</span>` +
+      (BUDGET[n] !== undefined ? `<br><span class="dim">budget ${BUDGET[n]} ms p99 \u2014 ${st.word}</span>` : '')));
+    hit.addEventListener('mouseleave', hideTip);
+    g.appendChild(hit);
+    svg.appendChild(g);
+  });
+}
+
+// ---- heavy hitters ------------------------------------------------------
+
+function renderHitters(d) {
+  const box = document.getElementById('hh');
+  const hh = d.sketches.heavy_hitters || [];
+  if (!hh.length) { box.innerHTML = '<span style="color:var(--dimmed);font-size:10px">no counters yet</span>'; return; }
+  const total = hh.reduce((a, x) => a + x.score, 0) || 1;
+  const max = hh[0].score || 1;
+  box.innerHTML = '';
+  for (const x of hh) {
+    const row = document.createElement('div');
+    row.className = 'hh-row';
+    const left = document.createElement('div');
+    left.style.minWidth = '0';       // a 1fr grid track will not shrink below nowrap text without it
+    const name = document.createElement('div');
+    name.className = 'hh-name';
+    name.textContent = x.title;
+    name.title = x.title + ' (' + x.ticker + ')';
+    const track = document.createElement('div');
+    track.className = 'hh-bar-track';
+    const bar = document.createElement('div');
+    bar.className = 'hh-bar';
+    bar.style.width = Math.max(1, (x.score / max) * 100) + '%';
+    track.appendChild(bar);
+    left.appendChild(name); left.appendChild(track);
+    const val = document.createElement('div');
+    val.className = 'hh-val';
+    val.textContent = ((x.score / total) * 100).toFixed(1) + '%';
+    row.appendChild(left); row.appendChild(val);
+    row.addEventListener('mousemove', ev => showTip(ev, `<b>${x.ticker}</b><br>${x.title}<br>sketch score ${fmtNum(x.score)}<br><span class="dim">${((x.score / total) * 100).toFixed(1)}% of the top ${hh.length}</span>`));
+    row.addEventListener('mouseleave', hideTip);
+    box.appendChild(row);
+  }
+}
+
+// ---- KPI tiles ----------------------------------------------------------
+
+const TILES = [
+  { key: 'msgs',     label: 'Kalshi messages',  unit: '/s',  fmt: v => fmtNum(v) },
+  { key: 'trades',   label: 'Trades',           unit: '/s',  fmt: v => fmtNum(v) },
+  { key: 'payloads', label: 'Payloads built',   unit: '/s',  fmt: v => fmtNum(v) },
+  { key: 'e2e',      label: 'recv → send p99', unit: 'ms', fmt: v => fmtNum(v) },
+  { key: 'queue',    label: 'Queue depth',      unit: '',    fmt: v => fmtNum(v, 0) },
+  { key: 'distinct', label: 'Distinct markets', unit: '',    fmt: v => fmtNum(v, 0) },
+  { key: 'conc',     label: 'Concentration',    unit: '',    fmt: v => v === null ? '--' : v.toFixed(3) },
+  { key: 'drops',    label: 'Trades dropped',   unit: '/s',  fmt: v => fmtNum(v) },
+];
+
+function buildTiles() {
+  const box = document.getElementById('kpis');
+  box.innerHTML = '';
+  for (const t of TILES) {
+    const card = document.createElement('div');
+    card.className = 'tile';
+    card.innerHTML = `<div class="label">${t.label}</div>
+      <div class="value"><span id="v-${t.key}">--</span><span class="unit">${t.unit}</span></div>
+      <svg class="spark" id="s-${t.key}"></svg>`;
+    box.appendChild(card);
+  }
+}
+
+function renderTiles() {
+  for (const t of TILES) {
+    const a = hist[t.key];
+    const last = a.length ? a[a.length - 1] : null;
+    document.getElementById('v-' + t.key).textContent = last === null || last === undefined ? '--' : t.fmt(last);
+    const colour = t.key === 'drops' && last > 0 ? 'var(--red)' : 'var(--s1)';
+    sparkline(document.getElementById('s-' + t.key), a.filter(v => v !== null && v !== undefined), colour);
+  }
+}
+
+// ---- table view ---------------------------------------------------------
+
+function renderTable(d) {
+  const names = Object.keys(d.stages).filter(n => d.stages[n]).sort();
+  let html = '<table><thead><tr><th>stage</th><th>p50 ms</th><th>p99 ms</th><th>p99.9 ms</th><th>max ms</th><th>budget</th><th>samples</th><th>total</th></tr></thead><tbody>';
+  for (const n of names) {
+    const s = d.stages[n], st = statusOf(n, s.p99);
+    html += `<tr><td>${n}</td><td>${fmtNum(s.p50)}</td><td class="${st.key === 'ok' ? '' : 'over'}">${fmtNum(s.p99)}</td><td>${fmtNum(s.p999)}</td><td>${fmtNum(s.max)}</td><td>${BUDGET[n] !== undefined ? BUDGET[n] : 'n/a'}</td><td>${fmtNum(s.n, 0)}</td><td>${fmtNum(s.total, 0)}</td></tr>`;
+  }
+  html += '</tbody></table><table><thead><tr><th>counter</th><th>value</th></tr></thead><tbody>';
+  const extra = Object.assign({}, d.counters, {
+    'sketch: distinct_active (§6.2.1)': d.sketches.distinct_active,
+    'sketch: concentration (§6.2.4)': d.sketches.concentration,
+    'sketch: F2 estimate': Math.round(d.sketches.f2_estimate),
+    'sketch: F2 total weight': Math.round(d.sketches.f2_total_weight),
+    'sketch: Misra-Gries counters held': d.sketches.hh_counters + ' of K=' + d.sketches.hh_k,
+    'queue depth': d.sizes.queue + ' of ' + d.sizes.queue_max,
+    'browser clients': d.sizes.clients,
+    'order books': d.sizes.books,
+    'markets tracked': d.sizes.tickers,
+  });
+  for (const k of Object.keys(extra)) html += `<tr><td>${k}</td><td>${extra[k]}</td></tr>`;
+  html += '</tbody></table>';
+  document.getElementById('tbl').innerHTML = html;
+}
+
+// ---- poll loop ----------------------------------------------------------
+
+function setPill(cls, text) {
+  const p = document.getElementById('feed-pill');
+  p.className = 'feed-pill ' + cls;
+  p.textContent = text;
+}
+
+function absorb(d) {
+  const now = d.now_ms / 1000;
+  const dt = prev ? Math.max(0.2, now - prev.now_ms / 1000) : null;
+  const rate = k => {
+    if (!dt) return 0;
+    return Math.max(0, ((d.counters[k] || 0) - (prev.counters[k] || 0)) / dt);
+  };
+  const buildTotal = (d.stages.build && d.stages.build.total) || 0;
+  const prevBuild = prev ? ((prev.stages.build && prev.stages.build.total) || 0) : 0;
+
+  push('t', now);
+  push('msgs', rate('msgs'));
+  push('trades', rate('trade_count'));
+  push('drops', rate('trades_dropped'));
+  push('payloads', dt ? Math.max(0, (buildTotal - prevBuild) / dt) : 0);
+  push('queue', d.sizes.queue);
+  push('distinct', d.sketches.distinct_active);
+  push('conc', d.sketches.concentration);
+  push('e2e', (d.stages.recv_to_send && d.stages.recv_to_send.p99) || 0);
+  prev = d;
+}
+
+function renderAll(d) {
+  document.getElementById('hdr-uptime').textContent = fmtDur(d.uptime_s);
+  document.getElementById('hdr-clients').textContent = d.sizes.clients;
+  document.getElementById('hdr-books').textContent = d.sizes.books;
+  document.getElementById('hdr-window').textContent = fmtDur(hist.t.length - 1);
+  document.getElementById('hh-k').textContent = d.sketches.hh_k;
+
+  const age = d.feed.last_msg_age_ms;
+  if (!d.feed.connected) setPill('feed-dead', 'feed down');
+  else if (age !== null && age > 5000) setPill('feed-lagging', 'lagging ' + fmtDur(age / 1000));
+  else setPill('feed-live', 'live');
+
+  renderTiles();
+  renderPipe(d);
+  lineChart(document.getElementById('c-distinct'), hist.distinct, { label: 'distinct markets', fmt: v => fmtNum(v, 0), minSpan: 8 });
+  lineChart(document.getElementById('c-conc'), hist.conc.filter(v => v !== null && v !== undefined), { label: 'concentration', yMin: 0, fmt: v => v.toFixed(3), minSpan: 0.05 });
+  lineChart(document.getElementById('c-msgs'), hist.msgs, { label: 'messages/s', yMin: 0, fmt: v => fmtNum(v, 0), minSpan: 10 });
+  renderHitters(d);
+  renderStages(d);
+  if (document.querySelector('details.tableview').open) renderTable(d);
+
+  const s = d.sketches;
+  document.getElementById('sketch-note').innerHTML =
+    `Distinct is the min-hash estimate over ${s.distinct_hashes} hash functions (&sect;6.2.1), so it is approximate by ` +
+    `construction &mdash; it costs O(log m) space instead of a set of every ticker. Concentration is ` +
+    `F&#8322;/(&Sigma;f)&#178; from the AMS &plusmn;1 sketch (&sect;6.2.4): near 0 means the trade load is spread across many ` +
+    `markets, near 1 means a few markets carry it. Right now F&#8322;&nbsp;&asymp;&nbsp;${fmtNum(s.f2_estimate)} over a faded ` +
+    `&Sigma;f of ${fmtNum(s.f2_total_weight)}. Misra-Gries holds ${s.hh_counters} of K=${s.hh_k} counters, so it only ` +
+    `reliably finds markets above ~1/(K+1) of the load; both it and F&#8322; are faded &times;0.85 every 30&nbsp;s, which is why ` +
+    `these are "recent load", not all-time totals.`;
+}
+
+async function poll() {
+  try {
+    const r = await fetch('/api/graph', { cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    absorb(d);
+    renderAll(d);
+  } catch (e) {
+    setPill('feed-dead', 'server unreachable');
+  }
+}
+
+buildTiles();
+poll();
+setInterval(poll, POLL_MS);
+// Redraw on resize: the charts are measured from their container, not scaled.
+let rz;
+window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (prev) renderAll(prev); }, 150); });
+document.querySelector('details.tableview').addEventListener('toggle', e => { if (e.target.open && prev) renderTable(prev); });
+</script>
+</body>
+</html>
