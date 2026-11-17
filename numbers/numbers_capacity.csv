@@ -1,0 +1,118 @@
+id,value,unit,window,source,check,note
+capacity.200.minutes,1070,minutes,11-13 06:30 to 11-14 00:20 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.200.cpu_avg,29.12,% of one core,11-13 06:30 to 11-14 00:20 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.200.cpu_p95,34.98,% of one core,11-13 06:30 to 11-14 00:20 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.200.lag_p99,47.36,ms,11-13 06:30 to 11-14 00:20 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.200.lag_max,913.85,ms,11-13 06:30 to 11-14 00:20 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.200.rss_max,408.76,MB,11-13 06:30 to 11-14 00:20 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.200.msgs_s,6419.9,messages/s,11-13 06:30 to 11-14 00:20 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.200.steal_avg,0.73,% of CPU time,11-13 06:30 to 11-14 00:20 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.200.steal_max,3.38,% of CPU time,11-13 06:30 to 11-14 00:20 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.200.gaps,0,gaps,11-13 06:30 to 11-14 00:20 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.200.hub_p999,0.11,ms,11-13 06:30 to 11-14 00:20 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.200.books_p1,198.0,books,11-13 06:30 to 11-14 00:20 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.200.books_min,193.0,books,11-13 06:30 to 11-14 00:20 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.400.minutes,11,minutes,11-14 06:01 to 11-14 06:12 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.400.cpu_avg,31.47,% of one core,11-14 06:01 to 11-14 06:12 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.400.cpu_p95,33.16,% of one core,11-14 06:01 to 11-14 06:12 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.400.lag_p99,32.07,ms,11-14 06:01 to 11-14 06:12 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.400.lag_max,142.06,ms,11-14 06:01 to 11-14 06:12 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.400.rss_max,252.16,MB,11-14 06:01 to 11-14 06:12 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.400.msgs_s,6488.7,messages/s,11-14 06:01 to 11-14 06:12 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.400.steal_avg,0.7,% of CPU time,11-14 06:01 to 11-14 06:12 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.400.steal_max,0.82,% of CPU time,11-14 06:01 to 11-14 06:12 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.400.gaps,0,gaps,11-14 06:01 to 11-14 06:12 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.400.hub_p999,0.11,ms,11-14 06:01 to 11-14 06:12 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.400.books_p1,400.0,books,11-14 06:01 to 11-14 06:12 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.400.books_min,400.0,books,11-14 06:01 to 11-14 06:12 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.500.minutes,25,minutes,11-14 06:23 to 11-14 06:48 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.500.cpu_avg,27.41,% of one core,11-14 06:23 to 11-14 06:48 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.500.cpu_p95,28.72,% of one core,11-14 06:23 to 11-14 06:48 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.500.lag_p99,24.73,ms,11-14 06:23 to 11-14 06:48 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.500.lag_max,100.76,ms,11-14 06:23 to 11-14 06:48 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.500.rss_max,261.03,MB,11-14 06:23 to 11-14 06:48 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.500.msgs_s,5191.71,messages/s,11-14 06:23 to 11-14 06:48 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.500.steal_avg,0.71,% of CPU time,11-14 06:23 to 11-14 06:48 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.500.steal_max,1.01,% of CPU time,11-14 06:23 to 11-14 06:48 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.500.gaps,0,gaps,11-14 06:23 to 11-14 06:48 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.500.hub_p999,0.11,ms,11-14 06:23 to 11-14 06:48 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.500.books_p1,500.0,books,11-14 06:23 to 11-14 06:48 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.500.books_min,500.0,books,11-14 06:23 to 11-14 06:48 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.600.minutes,10,minutes,11-14 06:59 to 11-14 07:09 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.600.cpu_avg,26.41,% of one core,11-14 06:59 to 11-14 07:09 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.600.cpu_p95,28.82,% of one core,11-14 06:59 to 11-14 07:09 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.600.lag_p99,19.91,ms,11-14 06:59 to 11-14 07:09 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.600.lag_max,1021.34,ms,11-14 06:59 to 11-14 07:09 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.600.rss_max,219.45,MB,11-14 06:59 to 11-14 07:09 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.600.msgs_s,4412.22,messages/s,11-14 06:59 to 11-14 07:09 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.600.steal_avg,0.96,% of CPU time,11-14 06:59 to 11-14 07:09 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.600.steal_max,3.1,% of CPU time,11-14 06:59 to 11-14 07:09 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.600.gaps,0,gaps,11-14 06:59 to 11-14 07:09 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.600.hub_p999,0.11,ms,11-14 06:59 to 11-14 07:09 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.600.books_p1,600.0,books,11-14 06:59 to 11-14 07:09 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.600.books_min,600.0,books,11-14 06:59 to 11-14 07:09 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.700.minutes,9,minutes,11-14 07:20 to 11-14 07:29 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.700.cpu_avg,26.42,% of one core,11-14 07:20 to 11-14 07:29 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.700.cpu_p95,27.66,% of one core,11-14 07:20 to 11-14 07:29 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.700.lag_p99,22.67,ms,11-14 07:20 to 11-14 07:29 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.700.lag_max,123.0,ms,11-14 07:20 to 11-14 07:29 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.700.rss_max,203.85,MB,11-14 07:20 to 11-14 07:29 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.700.msgs_s,5547.85,messages/s,11-14 07:20 to 11-14 07:29 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.700.steal_avg,0.67,% of CPU time,11-14 07:20 to 11-14 07:29 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.700.steal_max,0.8,% of CPU time,11-14 07:20 to 11-14 07:29 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.700.gaps,0,gaps,11-14 07:20 to 11-14 07:29 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.700.hub_p999,0.11,ms,11-14 07:20 to 11-14 07:29 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.700.books_p1,700.0,books,11-14 07:20 to 11-14 07:29 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.700.books_min,700.0,books,11-14 07:20 to 11-14 07:29 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.800.minutes,9,minutes,11-14 07:40 to 11-14 07:49 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.800.cpu_avg,26.53,% of one core,11-14 07:40 to 11-14 07:49 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.800.cpu_p95,27.88,% of one core,11-14 07:40 to 11-14 07:49 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.800.lag_p99,16.03,ms,11-14 07:40 to 11-14 07:49 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.800.lag_max,64.8,ms,11-14 07:40 to 11-14 07:49 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.800.rss_max,200.43,MB,11-14 07:40 to 11-14 07:49 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.800.msgs_s,4897.45,messages/s,11-14 07:40 to 11-14 07:49 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.800.steal_avg,0.77,% of CPU time,11-14 07:40 to 11-14 07:49 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.800.steal_max,1.09,% of CPU time,11-14 07:40 to 11-14 07:49 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.800.gaps,0,gaps,11-14 07:40 to 11-14 07:49 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.800.hub_p999,0.11,ms,11-14 07:40 to 11-14 07:49 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.800.books_p1,800.0,books,11-14 07:40 to 11-14 07:49 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.800.books_min,800.0,books,11-14 07:40 to 11-14 07:49 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.900.minutes,26,minutes,11-14 08:00 to 11-14 08:26 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.900.cpu_avg,25.89,% of one core,11-14 08:00 to 11-14 08:26 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.900.cpu_p95,27.84,% of one core,11-14 08:00 to 11-14 08:26 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.900.lag_p99,19.91,ms,11-14 08:00 to 11-14 08:26 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.900.lag_max,285.61,ms,11-14 08:00 to 11-14 08:26 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.900.rss_max,230.18,MB,11-14 08:00 to 11-14 08:26 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.900.msgs_s,4685.94,messages/s,11-14 08:00 to 11-14 08:26 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.900.steal_avg,0.72,% of CPU time,11-14 08:00 to 11-14 08:26 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.900.steal_max,1.5,% of CPU time,11-14 08:00 to 11-14 08:26 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.900.gaps,0,gaps,11-14 08:00 to 11-14 08:26 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.900.hub_p999,0.11,ms,11-14 08:00 to 11-14 08:26 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.900.books_p1,900.0,books,11-14 08:00 to 11-14 08:26 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.900.books_min,900.0,books,11-14 08:00 to 11-14 08:26 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.1000.minutes,23,minutes,11-14 08:36 to 11-14 08:59 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.1000.cpu_avg,25.8,% of one core,11-14 08:36 to 11-14 08:59 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.1000.cpu_p95,27.3,% of one core,11-14 08:36 to 11-14 08:59 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.1000.lag_p99,16.03,ms,11-14 08:36 to 11-14 08:59 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.1000.lag_max,117.63,ms,11-14 08:36 to 11-14 08:59 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.1000.rss_max,217.71,MB,11-14 08:36 to 11-14 08:59 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.1000.msgs_s,4645.63,messages/s,11-14 08:36 to 11-14 08:59 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.1000.steal_avg,0.69,% of CPU time,11-14 08:36 to 11-14 08:59 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.1000.steal_max,0.91,% of CPU time,11-14 08:36 to 11-14 08:59 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.1000.gaps,0,gaps,11-14 08:36 to 11-14 08:59 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.1000.hub_p999,0.1,ms,11-14 08:36 to 11-14 08:59 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.1000.books_p1,998.0,books,11-14 08:36 to 11-14 08:59 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.1000.books_min,998.0,books,11-14 08:36 to 11-14 08:59 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.400.restored.minutes,23,minutes,11-14 09:27 to 11-14 09:50 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.400.restored.cpu_avg,24.46,% of one core,11-14 09:27 to 11-14 09:50 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.400.restored.cpu_p95,26.71,% of one core,11-14 09:27 to 11-14 09:50 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.400.restored.lag_p99,12.36,ms,11-14 09:27 to 11-14 09:50 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.400.restored.lag_max,96.86,ms,11-14 09:27 to 11-14 09:50 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.400.restored.rss_max,214.17,MB,11-14 09:27 to 11-14 09:50 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,confirmed,matches the experiment note within the one-minute rule
+capacity.400.restored.msgs_s,4346.49,messages/s,11-14 09:27 to 11-14 09:50 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.400.restored.steal_avg,0.7,% of CPU time,11-14 09:27 to 11-14 09:50 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.400.restored.steal_max,0.95,% of CPU time,11-14 09:27 to 11-14 09:50 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.400.restored.gaps,0,gaps,11-14 09:27 to 11-14 09:50 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.400.restored.hub_p999,0.1,ms,11-14 09:27 to 11-14 09:50 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.400.restored.books_p1,399.0,books,11-14 09:27 to 11-14 09:50 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,
+capacity.400.restored.books_min,399.0,books,11-14 09:27 to 11-14 09:50 UTC,metrics.duckdb: minute_metric and stage_minute by boot_id,single_source,

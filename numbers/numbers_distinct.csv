@@ -1,0 +1,6 @@
+id,value,unit,window,source,check,note
+distinct.median_ratio,1.62,estimate / exact count,"2026-11-01 03:00 to 09:00 UTC, five counters, 5-minute checkpoints; 355 comparisons at exact counts above 10,000",experiments/2026-11-15-distinct-counter/distinct_check.py,single_source,the deployed counter has no decay; the exact count is cumulative over the stretch
+distinct.p10_ratio,0.98,estimate / exact count,"2026-11-01 03:00 to 09:00 UTC, five counters, 5-minute checkpoints; 355 comparisons at exact counts above 10,000",experiments/2026-11-15-distinct-counter/distinct_check.py,single_source,
+distinct.p90_ratio,2.36,estimate / exact count,"2026-11-01 03:00 to 09:00 UTC, five counters, 5-minute checkpoints; 355 comparisons at exact counts above 10,000",experiments/2026-11-15-distinct-counter/distinct_check.py,single_source,
+distinct.exact_final,271669,distinct markets,"2026-11-01 03:00 to 09:00 UTC, five counters, 5-minute checkpoints; 355 comparisons at exact counts above 10,000",experiments/2026-11-15-distinct-counter/distinct_check.py,single_source,exact count at the end of the stretch
+browser.share_of_minutes,34.5,"% of the 2,880 minutes",48-hour capture,"numbers.csv browser.minutes_with_tab (994) over window.minutes (2,880)",single_source,derived

@@ -1,0 +1,3 @@
+id,value,unit,window,source,check,note
+server.rate_per_hour,0.0168,USD per hour,on-demand rate for t4g.small in us-east-2,deploy/AWS_INSTANCE.md (recorded at launch 2026-10-21) and third-party price lists (aws-pricing.com and others),carried,"two sources agree; AWS's own price page was not read"
+server.cost_per_month,12.3,USD per month,0.0168 x 730 hours,derived from server.rate_per_hour,carried,"instance only; disk and network are extra"

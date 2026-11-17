@@ -1,0 +1,11 @@
+id,value,unit,window,source,check,note
+connect.server.min,1.86,ms,"100 TCP connections to external-api-ws.kalshi.com:443, 2026-11-15",connect_probe.py from the server (Ohio),single_source,
+connect.server.median,2.08,ms,"100 TCP connections to external-api-ws.kalshi.com:443, 2026-11-15",connect_probe.py from the server (Ohio),single_source,
+connect.server.p90,3.02,ms,"100 TCP connections to external-api-ws.kalshi.com:443, 2026-11-15",connect_probe.py from the server (Ohio),single_source,
+connect.server.max,5.68,ms,"100 TCP connections to external-api-ws.kalshi.com:443, 2026-11-15",connect_probe.py from the server (Ohio),single_source,
+connect.laptop.min,14.64,ms,"100 TCP connections to external-api-ws.kalshi.com:443, 2026-11-15",connect_probe.py from the laptop (Chicago),single_source,LAPTOP: measured on the author's laptop; not used in the paper (server figures only).
+connect.laptop.median,18.35,ms,"100 TCP connections to external-api-ws.kalshi.com:443, 2026-11-15",connect_probe.py from the laptop (Chicago),single_source,LAPTOP: measured on the author's laptop; not used in the paper (server figures only).
+connect.laptop.p90,20.53,ms,"100 TCP connections to external-api-ws.kalshi.com:443, 2026-11-15",connect_probe.py from the laptop (Chicago),single_source,LAPTOP: measured on the author's laptop; not used in the paper (server figures only).
+connect.laptop.max,23.82,ms,"100 TCP connections to external-api-ws.kalshi.com:443, 2026-11-15",connect_probe.py from the laptop (Chicago),single_source,LAPTOP: measured on the author's laptop; not used in the paper (server figures only).
+connect.laptop_minus_server.median,16.27,ms,"100 TCP connections to external-api-ws.kalshi.com:443, 2026-11-15",difference of the two medians,single_source,derived LAPTOP: measured on the author's laptop; not used in the paper (server figures only).
+connect.host_region,us-east-2 (Ohio),region,"100 TCP connections to external-api-ws.kalshi.com:443, 2026-11-15",reverse name of 3.22.144.41: ec2-3-22-144-41.us-east-2.compute.amazonaws.com,single_source,inference: Kalshi does not publish its location

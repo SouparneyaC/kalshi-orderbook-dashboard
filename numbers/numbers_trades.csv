@@ -1,0 +1,4 @@
+id,value,unit,window,source,check,note
+trades.total,68367067,trades,"recorded trades, 2026-10-26 to 2026-11-02 UTC",trades.duckdb,single_source,"the recorder had gaps, so this is not every trade Kalshi had"
+trades.price_not_whole_cent_share,28.1,% of trades,"recorded trades, 2026-10-26 to 2026-11-02 UTC",trades.duckdb price column,single_source,"19,244,458 of 68,367,067 trades are at a price that is not a whole number of cents"
+trades.price_below_one_cent_share,6.4,% of trades,"recorded trades, 2026-10-26 to 2026-11-02 UTC",trades.duckdb price column,single_source,"4,387,290 trades"

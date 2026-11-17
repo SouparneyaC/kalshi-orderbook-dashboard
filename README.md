@@ -26,7 +26,7 @@ Currently supported features:
 
 ## Installation & Usage
 
-Requires Python 3.10+ and a Kalshi account with an API key. Create the key in your Kalshi account settings; you get a key ID and a private key file.
+Tested on Python 3.12. Needs a Kalshi account with an API key. Create the key in your Kalshi account settings; you get a key ID and a private key file.
 
 ```bash
 git clone https://github.com/SouparneyaC/kalshi-orderbook-dashboard.git
@@ -90,20 +90,21 @@ The tests replay a simulated Kalshi stream (`tests/sim_stream.py`), so they need
 
 `deploy/` has what we use in production: a setup script for a fresh Ubuntu 24.04 machine (`setup-server.sh`), a systemd unit that restarts the app if it exits (`tradedash.service`) and a [Caddy](https://caddyserver.com) config that puts a password in front of the dashboard (`Caddyfile`). The app itself only listens on 127.0.0.1.
 
-Our instance is an AWS EC2 t4g.small (2 ARM vCPUs, 2 GiB of memory) in us-east-2 (Ohio), the same AWS region as Kalshi's API. Measured on it with 200 order books:
+Our instance is an AWS EC2 t4g.small (2 ARM vCPUs, 2 GiB of memory) in us-east-2 (Ohio), the same AWS region as Kalshi's API. Measured on it over 48 hours (2026-11-04 to 2026-11-06) with 200 order books, trade storage off and no restart. A browser tab was open in 34.5% of the minutes:
 
 | | Measured |
 |---|---|
-| Kalshi to server, trades | 7 ms median, 30 to 50 ms p99 |
-| Kalshi to server, order book updates | 7 ms median, about 20 ms p99 |
+| Kalshi's timestamp to receipt, trades | 8.0 ms median, 70 ms p99 |
+| Kalshi's timestamp to receipt, order book updates | 8.0 ms median, 73 ms p99 |
 | Home page update interval | 100 ms |
 | Market page update interval | about 50 ms |
-| CPU | 27 to 47% of one core, depending on how many tabs are open |
-| Memory | 150 to 200 MB |
+| CPU | 33.0% of one core on average, 65.0% in the busiest minute |
+| Memory | 318.9 MB on average, 369.8 MB at most |
+| Hypervisor steal | 0.64% of CPU time on average, 2.5% at most |
 
 Each extra order book cost about 0.026% of one core when we stepped from 25 to 400 books on the live server; memory and latency did not change over that range. A later overnight test stepped from 400 to 1,000 books with no browser connected: CPU stayed between 25% and 31% of one core and memory stayed under 270 MB, with no sequence gaps. That test did not cover the evening peak or an open browser tab.
 
-A t4g instance earns CPU credits and is slowed to a baseline of about 20% per vCPU once they run out. This workload ran out of credits on busy evenings. If you see high "steal" time in `top`, either enable unlimited credits or move to a non-burstable instance.
+A t4g instance earns CPU credits and is slowed to a baseline of about 20% per vCPU once they run out. On 2026-10-21, with trade storage on, ours ran out and showed 36 to 50% steal time; in the 48 hours above, with storage off, steal averaged 0.64%. We could not read the credit balance itself. If you see high "steal" time in `top`, either enable unlimited credits or move to a non-burstable instance.
 
 ## Project Structure
 
@@ -132,6 +133,7 @@ A t4g instance earns CPU credits and is slowed to a baseline of about 20% per vC
 │       └── graph.html         # Pipeline and load page
 ├── deploy/                    # Server setup script, systemd unit, Caddy config
 ├── docs/                      # Screenshots
+├── numbers/                   # The numbers behind the measurements, with a source and a check for each
 └── tests/                     # Unit tests and the simulated Kalshi stream
 ```
 
@@ -143,6 +145,7 @@ A t4g instance earns CPU credits and is slowed to a baseline of about 20% per vC
 - The audit asks Kalshi for a fresh snapshot of one book and compares it with ours. Asking for a snapshot makes Kalshi skip a few updates that share the snapshot's clock value, so a difference can come from the check itself. Not every request gets a reply.
 - Saving trades is the most CPU-hungry part on a small instance. On the t4g.small the database writer fell behind during busy hours, so our deployment runs with `PERSIST_TRADES=0`.
 - Comments citing sections like "Drepper §6.2.1" refer to Ulrich Drepper, [What Every Programmer Should Know About Memory](https://www.akkadia.org/drepper/cpumemory.pdf) (2007), which guided the memory layout of the hot paths.
+- The 48-hour table and the 400 to 1,000 book test above are rows of the files in `numbers/`, each with its window, source and a check status (`numbers/README.md`). The per-book CPU cost from 25 to 400 books is from an earlier run that is not in those files.
 - This project is not affiliated with Kalshi. Use of Kalshi's API is subject to Kalshi's terms.
 
 ## License
