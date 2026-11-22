@@ -7,7 +7,6 @@ samples kept, and the self-check that every recorded sample reaches the minute i
 import math
 import os
 import random
-import sys
 import tempfile
 import unittest
 from pathlib import Path

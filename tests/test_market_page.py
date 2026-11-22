@@ -6,7 +6,6 @@ import asyncio
 import json
 import os
 import unittest
-from collections import deque
 from unittest import mock
 
 os.environ.setdefault("KALSHI_KEY_ID", "test")

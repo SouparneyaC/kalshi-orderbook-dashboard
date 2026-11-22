@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install
+        run: pip install -r requirements-lock.txt ruff==0.17.6
+      - name: Lint
+        run: ruff check .
+      - name: Test
+        run: python -m unittest discover -s tests -t .
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check compose.yaml
+        run: docker compose config --quiet
+        env:
+          KALSHI_KEY_ID: ci-placeholder
+          KALSHI_PRIVATE_KEY_FILE: /tmp/placeholder.pem
+          HOST_UID: "1000"
+          HOST_GID: "1000"
+      - name: Build the image
+        run: docker build --build-arg GIT_COMMIT="$GITHUB_SHA" -t tradedash:ci .
+      - name: Start it and wait for the healthcheck
+        run: |
+          printf 'placeholder' > /tmp/placeholder.pem
+          docker run -d --name tradedash-ci --network none \
+            -e KALSHI_KEY_ID=ci-placeholder -e KALSHI_PRIVATE_KEY_PATH=/run/secrets/key.pem \
+            -v /tmp/placeholder.pem:/run/secrets/key.pem:ro tradedash:ci
+          for i in $(seq 1 12); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' tradedash-ci)
+            echo "health: $status"
+            [ "$status" = healthy ] && exit 0
+            sleep 5
+          done
+          docker logs tradedash-ci
+          exit 1

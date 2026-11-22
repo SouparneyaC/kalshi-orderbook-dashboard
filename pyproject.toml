@@ -1,0 +1,42 @@
+[project]
+name = "kalshi-orderbook-dashboard"
+version = "0.1.0"
+description = "A live order book service for Kalshi prediction markets: one Python process keeps the books in memory and pushes changes to browsers."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Souparneya Chakrabarti" }]
+keywords = ["kalshi", "prediction-markets", "order-book", "market-data", "websocket", "asyncio", "fastapi", "low-latency"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: FastAPI",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial",
+]
+dynamic = ["dependencies"]
+
+[project.urls]
+Homepage = "https://github.com/SouparneyaC/kalshi-orderbook-dashboard"
+Issues = "https://github.com/SouparneyaC/kalshi-orderbook-dashboard/issues"
+Changelog = "https://github.com/SouparneyaC/kalshi-orderbook-dashboard/blob/main/CHANGELOG.md"
+
+# The service runs from a checkout (uvicorn app.server.main:app), not from an installed package.
+# This file records the metadata and the Python floor, and holds the lint settings.
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[tool.ruff]
+line-length = 130
+
+[tool.ruff.lint]
+# Real errors only: syntax errors (E9) and pyflakes (F). Style rules are not enforced.
+select = ["E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# app/ is kept identical to the code that was measured (numbers/), so these harmless findings stay.
+"app/**" = ["F401", "F541"]
+# Kept verbatim as the reference implementation the golden tests compare against.
+"tests/legacy_orderbook.py" = ["F541"]

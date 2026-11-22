@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest a change or an addition
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, and what stops you.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you would change
+      description: A sketch is enough. Large changes are easier to discuss here before any code is written.
