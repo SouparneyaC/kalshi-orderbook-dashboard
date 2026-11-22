@@ -1,0 +1,2 @@
+# Only for bench/plots/make_plots.py. The service itself does not need it.
+matplotlib==3.11.2
