@@ -17,3 +17,7 @@ venv/
 .DS_Store
 .vscode/
 .idea/
+
+# Container and tool output
+data/
+.ruff_cache/
