@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Kalshi Order Book Dashboard"
+abstract: "A live order book service for Kalshi prediction markets. One Python process keeps order books in memory from Kalshi's WebSocket feed, repairs lost updates from a snapshot, and pushes changes to browsers. The repository includes the measured latency, CPU and capacity figures behind its design."
+authors:
+  - family-names: Chakrabarti
+    given-names: Souparneya
+version: 0.1.0
+date-released: 2026-11-21
+license: MIT
+repository-code: "https://github.com/SouparneyaC/kalshi-orderbook-dashboard"
+keywords:
+  - prediction markets
+  - order book
+  - market data
+  - WebSocket
+  - latency
